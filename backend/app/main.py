@@ -1,10 +1,19 @@
 from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from gtts import gTTS
 import os
 import uuid
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # endereço do frontend que pode acessar
+    allow_credentials=True,
+    allow_methods=["*"],   # permite todos os métodos (GET, POST, etc)
+    allow_headers=["*"],   # permite todos os headers
+)
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -15,7 +24,7 @@ async def root():
 
 @app.post("/chamar")
 async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = Form(...)):
-    texto = f"Paciente {nome_paciente}, dirigir-se ao consultório {consultorio}"
+    texto = f"Paciente {nome_paciente}, dirigir-se ao {consultorio}"
     filename = f"{uuid.uuid4()}.mp3"
     filepath = os.path.join(AUDIO_DIR, filename)
 

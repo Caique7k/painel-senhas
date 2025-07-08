@@ -51,7 +51,36 @@ export default function Home() {
 
   const consultorios = ["Consultório 1", "Consultório 2", "Consultório 3"];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Função para tocar beep curto
+  const playSoftAlert = () => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.type = "triangle"; // som suave
+    oscillator.frequency.setValueAtTime(800, ctx.currentTime); // frequência
+
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02); // volume maior e subida mais rápida
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5); // duração maior, queda lenta
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 1.5); // toca por 1.5 segundos
+  };
+
+  // Função para tocar beep e depois o áudio do backend
+  const playAlertThenAudio = (audioUrl: string) => {
+    playSoftAlert();
+    setTimeout(() => {
+      const audio = new Audio(audioUrl);
+      audio.play();
+    }, 300);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!nomePaciente || !consultorio) {
@@ -62,12 +91,35 @@ export default function Home() {
       return;
     }
 
-    setToast({
-      message: `Chamando: ${nomePaciente} no ${consultorio}`,
-      type: "success",
-    });
-    setNomePaciente("");
-    setConsultorio("");
+    try {
+      const formData = new FormData();
+      formData.append("nome_paciente", nomePaciente);
+      formData.append("consultorio", consultorio);
+
+      const response = await fetch("http://localhost:8000/chamar", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao chamar paciente");
+      }
+
+      const data = await response.json();
+
+      setToast({ message: "Enviado com sucesso!", type: "success" });
+      setNomePaciente("");
+      setConsultorio("");
+
+      if (data.audio_url) {
+        playAlertThenAudio(`http://localhost:8000${data.audio_url}`);
+      }
+    } catch (error) {
+      setToast({
+        message: (error as Error).message || "Erro desconhecido",
+        type: "error",
+      });
+    }
   };
 
   return (
