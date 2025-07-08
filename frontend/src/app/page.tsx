@@ -2,10 +2,52 @@
 import { useState, useEffect } from "react";
 import { FaUser, FaClinicMedical } from "react-icons/fa";
 
+type ToastProps = {
+  message: string;
+  type?: "error" | "success";
+  onClose: () => void;
+};
+
+function Toast({ message, type = "error", onClose }: ToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      className={`fixed top-5 right-5 z-50 flex items-center rounded shadow-lg px-4 py-3 text-white font-semibold
+      ${
+        type === "error"
+          ? "bg-red-600"
+          : type === "success"
+          ? "bg-green-600"
+          : "bg-gray-600"
+      }
+      animate-fadeInDown`}
+      role="alert"
+    >
+      <span className="mr-4">{message}</span>
+      <button
+        aria-label="Fechar notificação"
+        onClick={onClose}
+        className="ml-auto font-bold hover:text-gray-300 transition"
+      >
+        &times;
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [nomePaciente, setNomePaciente] = useState<string>("");
   const [consultorio, setConsultorio] = useState<string>("");
-  const [erro, setErro] = useState<string>("");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
 
   const consultorios = ["Consultório 1", "Consultório 2", "Consultório 3"];
 
@@ -13,26 +55,23 @@ export default function Home() {
     e.preventDefault();
 
     if (!nomePaciente || !consultorio) {
-      setErro("Por favor, preencha todos os campos.");
+      setToast({
+        message: "Por favor, preencha todos os campos.",
+        type: "error",
+      });
       return;
     }
 
-    alert(`Nome do Paciente: ${nomePaciente}\nConsultório: ${consultorio}`);
+    setToast({
+      message: `Chamando: ${nomePaciente} no ${consultorio}`,
+      type: "success",
+    });
     setNomePaciente("");
     setConsultorio("");
-    setErro("");
   };
 
-  // Limpa a mensagem de erro após 3 segundos
-  useEffect(() => {
-    if (erro) {
-      const timer = setTimeout(() => setErro(""), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [erro]);
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 relative">
       <h1 className="mb-10 text-4xl font-extrabold text-white drop-shadow-lg">
         Painel de Senhas
       </h1>
@@ -42,12 +81,6 @@ export default function Home() {
         className="bg-gray-800 rounded-xl p-8 shadow-xl w-full max-w-md"
         noValidate
       >
-        {erro && (
-          <div className="mb-6 rounded bg-red-600 px-4 py-3 text-white font-semibold animate-pulse">
-            {erro}
-          </div>
-        )}
-
         <label className="block mb-6 relative">
           <span className="text-gray-300 font-semibold">Nome do paciente</span>
           <div className="relative mt-2">
@@ -97,6 +130,32 @@ export default function Home() {
           Chamar paciente
         </button>
       </form>
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Animação keyframes fadeInDown no globals.css */}
+      <style jsx global>{`
+        @keyframes fadeInDown {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeInDown {
+          animation: fadeInDown 0.3s ease forwards;
+        }
+      `}</style>
     </main>
   );
 }
