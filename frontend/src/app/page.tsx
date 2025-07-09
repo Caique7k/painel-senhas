@@ -76,7 +76,6 @@ export default function Home() {
     playSoftAlert();
     setTimeout(() => {
       const audio = new Audio(audioUrl);
-      audio.play();
     }, 300);
   };
 
