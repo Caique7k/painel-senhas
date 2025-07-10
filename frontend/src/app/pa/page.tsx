@@ -66,7 +66,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append("nome_paciente", nomePaciente);
       formData.append("consultorio", consultorio);
-      formData.append("setor", "ps");
+      formData.append("setor", "pa");
 
       const response = await fetch("http://localhost:8000/chamar", {
         method: "POST",

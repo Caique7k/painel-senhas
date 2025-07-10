@@ -45,7 +45,7 @@ export default function Painel() {
     const buscarChamadas = async () => {
       try {
         const res = await fetch(
-          "http://localhost:8000/ultimas-chamadas?setor=ps"
+          "http://localhost:8000/ultimas-chamadas?setor=pa"
         );
         const data: Senha[] = await res.json();
 

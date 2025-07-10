@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Form
+from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from gtts import gTTS
@@ -38,10 +39,10 @@ async def root():
     return {"message": "API do painel de senhas rodando!"}
 
 @app.post("/chamar")
-async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = Form(...)):
+async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = Form(...), setor: str = Form(...)):
     texto = f"Paciente {nome_paciente}, dirigir-se ao {consultorio}"
 
-    id_raw = f"{nome_paciente}-{consultorio}"
+    id_raw = f"{nome_paciente}-{consultorio}-{setor}"
     id_hash = hashlib.md5(id_raw.encode("utf-8")).hexdigest()
 
     global chamadas_recentes
@@ -64,7 +65,8 @@ async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = For
         "paciente": nome_paciente,
         "consultorio": consultorio,
         "audio_url": f"/static/{filename}",
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "setor": setor
     }
 
     chamadas_recentes.append(chamada)
@@ -80,10 +82,13 @@ async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = For
     return chamada
 
 @app.get("/ultimas-chamadas")
-async def ultimas_chamadas():
+async def ultimas_chamadas(setor: str = Query(...)):
     agora = time.time()
     # Retorna só chamadas com menos de 180 segundos
-    validas = [c for c in chamadas_recentes if agora - c["timestamp"] < 180]
+    validas = [
+    c for c in chamadas_recentes
+    if agora - c["timestamp"] < 180 and c["setor"] == setor
+]
     return validas
 
 @app.get("/static/{filename}")
