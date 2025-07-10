@@ -51,34 +51,6 @@ export default function Home() {
 
   const consultorios = ["Consultório 1", "Consultório 2", "Consultório 3"];
 
-  // Função para tocar beep curto
-  const playSoftAlert = () => {
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.type = "triangle"; // som suave
-    oscillator.frequency.setValueAtTime(800, ctx.currentTime); // frequência
-
-    gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02); // volume maior e subida mais rápida
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5); // duração maior, queda lenta
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 1.5); // toca por 1.5 segundos
-  };
-
-  // Função para tocar beep e depois o áudio do backend
-  const playAlertThenAudio = (audioUrl: string) => {
-    playSoftAlert();
-    setTimeout(() => {
-      const audio = new Audio(audioUrl);
-    }, 300);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -109,10 +81,6 @@ export default function Home() {
       setToast({ message: "Enviado com sucesso!", type: "success" });
       setNomePaciente("");
       setConsultorio("");
-
-      if (data.audio_url) {
-        playAlertThenAudio(`http://localhost:8000${data.audio_url}`);
-      }
     } catch (error) {
       setToast({
         message: (error as Error).message || "Erro desconhecido",

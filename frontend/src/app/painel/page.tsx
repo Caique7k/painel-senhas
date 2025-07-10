@@ -108,13 +108,20 @@ export default function Painel() {
           senhas.map(({ id, paciente, consultorio }) => (
             <div
               key={id}
-              className="bg-gradient-to-r from-indigo-700 to-purple-900 text-white p-16 rounded-lg shadow-xl flex flex-col items-center min-w-[320px]"
-              style={{ flex: "1 1 0", maxWidth: "380px" }}
+              className="bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-12 py-10 rounded-3xl shadow-xl flex flex-col justify-between items-center min-w-[320px]"
+              style={{ flex: "1 1 0", maxWidth: "400px", height: "420px" }}
             >
-              <span className="text-5xl mt-6 font-semibold text-center">
-                {paciente}
-              </span>
-              <span className="mt-10 text-3xl font-medium">{consultorio}</span>
+              {/* Nome do paciente centralizado */}
+              <div className="flex-grow w-full flex items-center justify-center">
+                <span className="text-5xl font-semibold text-center break-words leading-snug">
+                  {paciente}
+                </span>
+              </div>
+
+              {/* Consultório fixado na parte inferior */}
+              <div className="w-full text-center mt-auto pt-4 border-t border-white border-opacity-20">
+                <span className="text-4xl font-bold">{consultorio}</span>
+              </div>
             </div>
           ))
         )}
