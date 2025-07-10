@@ -56,7 +56,9 @@ export default function Painel() {
   const tocarAudio = (url: string) => {
     tocarBeep();
     setTimeout(() => {
-      const audio = new Audio(`http://localhost:8000${url}`);
+      const audio = new Audio(`${process.env.NEXT_PUBLIC_API_URL}${url}`);
+
+      audio.onerror = () => console.error("Erro ao carregar áudio!");
       audio.play();
     }, 1000);
   };
@@ -66,7 +68,7 @@ export default function Painel() {
     const buscarChamadas = async () => {
       try {
         const res = await fetch(
-          "http://localhost:8000/ultimas-chamadas?setor=ps"
+          `${process.env.NEXT_PUBLIC_API_URL}/ultimas-chamadas?setor=ps`
         );
         const data: Senha[] = await res.json();
 

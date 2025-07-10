@@ -44,6 +44,7 @@ function Toast({ message, type = "error", onClose }: ToastProps) {
 export default function Home() {
   const [nomePaciente, setNomePaciente] = useState<string>("");
   const [consultorio, setConsultorio] = useState<string>("");
+  const [senhas, setSenhas] = useState<string>("");
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success";
@@ -73,10 +74,13 @@ export default function Home() {
       formData.append("consultorio", consultorio);
       formData.append("setor", "ps");
 
-      const response = await fetch("http://localhost:8000/chamar", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/chamar`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Erro ao chamar paciente");
