@@ -96,91 +96,95 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 relative">
-      <h1 className="mb-10 text-4xl font-extrabold text-white drop-shadow-lg">
-        Painel de Senhas - Pronto Socorro
-      </h1>
+    <>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 relative">
+        <h1 className="mb-10 text-4xl font-extrabold text-white drop-shadow-lg">
+          Painel de Senhas - Pronto Socorro
+        </h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-gray-800 rounded-xl p-8 shadow-xl w-full max-w-md"
-        noValidate
-      >
-        <label className="block mb-6 relative">
-          <span className="text-gray-300 font-semibold">Nome do paciente</span>
-          <div className="relative mt-2">
-            <FaUser
-              className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 pointer-events-none"
-              size={18}
-            />
-            <input
-              type="text"
-              value={nomePaciente}
-              onChange={(e) => setNomePaciente(e.target.value)}
-              placeholder="Digite o nome completo"
-              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-              autoFocus
-            />
-          </div>
-        </label>
-
-        <label className="block mb-8 relative">
-          <span className="text-gray-300 font-semibold">Setor</span>
-          <div className="relative mt-2">
-            <FaClinicMedical
-              className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 pointer-events-none"
-              size={18}
-            />
-            <select
-              value={consultorio}
-              onChange={(e) => setConsultorio(e.target.value)}
-              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition cursor-pointer"
-            >
-              <option value="" disabled>
-                Selecione o setor
-              </option>
-              {consultorios.map((c, idx) => (
-                <option key={idx} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        </label>
-
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-700 py-3 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-400"
+        <form
+          onSubmit={handleSubmit}
+          className="bg-gray-800 rounded-xl p-8 shadow-xl w-full max-w-md"
+          noValidate
         >
-          Chamar paciente
-        </button>
-      </form>
+          <label className="block mb-6 relative">
+            <span className="text-gray-300 font-semibold">
+              Nome do paciente
+            </span>
+            <div className="relative mt-2">
+              <FaUser
+                className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 pointer-events-none"
+                size={18}
+              />
+              <input
+                type="text"
+                value={nomePaciente}
+                onChange={(e) => setNomePaciente(e.target.value)}
+                placeholder="Digite o nome completo"
+                className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                autoFocus
+              />
+            </div>
+          </label>
 
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+          <label className="block mb-8 relative">
+            <span className="text-gray-300 font-semibold">Setor</span>
+            <div className="relative mt-2">
+              <FaClinicMedical
+                className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 pointer-events-none"
+                size={18}
+              />
+              <select
+                value={consultorio}
+                onChange={(e) => setConsultorio(e.target.value)}
+                className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition cursor-pointer"
+              >
+                <option value="" disabled>
+                  Selecione o setor
+                </option>
+                {consultorios.map((c, idx) => (
+                  <option key={idx} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
 
-      {/* Animação keyframes fadeInDown no globals.css */}
-      <style jsx global>{`
-        @keyframes fadeInDown {
-          0% {
-            opacity: 0;
-            transform: translateY(-10px);
+          <button
+            type="submit"
+            className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-700 py-3 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-400"
+          >
+            Chamar paciente
+          </button>
+        </form>
+
+        {/* Toast */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+
+        {/* Animação keyframes fadeInDown no globals.css */}
+        <style jsx global>{`
+          @keyframes fadeInDown {
+            0% {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
+          .animate-fadeInDown {
+            animation: fadeInDown 0.3s ease forwards;
           }
-        }
-        .animate-fadeInDown {
-          animation: fadeInDown 0.3s ease forwards;
-        }
-      `}</style>
-    </main>
+        `}</style>
+      </main>
+    </>
   );
 }
