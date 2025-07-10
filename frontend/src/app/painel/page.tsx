@@ -11,7 +11,28 @@ type Senha = {
 
 export default function Painel() {
   const [senhas, setSenhas] = useState<Senha[]>([]);
+  const [audioLiberado, setAudioLiberado] = useState(false);
+  const liberarAudio = () => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    oscillator.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.01);
+    setAudioLiberado(true);
+  };
 
+  useEffect(() => {
+    const handleClick = () => {
+      liberarAudio();
+      window.removeEventListener("click", handleClick);
+    };
+
+    window.addEventListener("click", handleClick);
+
+    return () => {
+      window.removeEventListener("click", handleClick);
+    };
+  }, []);
   // Função para tocar beep curto
   const tocarBeep = () => {
     const ctx = new AudioContext();

@@ -25,13 +25,16 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 chamadas_recentes = []
 
 async def apagar_audio_apos_3_minutos(path: str):
-    await asyncio.sleep(180)  # espera 3 minutos
+    print(f"[DEBUG] Agendado para apagar em 3 minutos: {path}")
+    await asyncio.sleep(180)
     if os.path.exists(path):
         try:
             os.remove(path)
-            print(f"Áudio removido: {path}")
+            print(f"[DEBUG] Áudio removido com sucesso: {path}")
         except Exception as e:
-            print(f"Erro ao remover áudio: {e}")
+            print(f"[DEBUG] Erro ao remover áudio: {e}")
+    else:
+        print(f"[DEBUG] Arquivo já não existia: {path}")
 
 
 @app.get("/")
@@ -40,7 +43,11 @@ async def root():
 
 @app.post("/chamar")
 async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = Form(...), setor: str = Form(...)):
-    texto = f"Paciente {nome_paciente}, dirigir-se ao {consultorio}"
+   
+    if consultorio == "Triagem":
+        texto = f" {nome_paciente}, dirigir-se a {consultorio}"
+    else:
+        texto = f" {nome_paciente}, dirigir-se ao {consultorio}"
 
     id_raw = f"{nome_paciente}-{consultorio}-{setor}"
     id_hash = hashlib.md5(id_raw.encode("utf-8")).hexdigest()

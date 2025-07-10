@@ -49,7 +49,12 @@ export default function Home() {
     type: "error" | "success";
   } | null>(null);
 
-  const consultorios = ["Consultório 1", "Consultório 2", "Consultório 3"];
+  const consultorios = [
+    "Triagem",
+    "Consultório 1",
+    "Consultório 2",
+    "Consultório 3",
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +98,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 relative">
       <h1 className="mb-10 text-4xl font-extrabold text-white drop-shadow-lg">
-        Painel de Senhas
+        Painel de Senhas - Pronto Socorro
       </h1>
 
       <form
@@ -120,7 +125,7 @@ export default function Home() {
         </label>
 
         <label className="block mb-8 relative">
-          <span className="text-gray-300 font-semibold">Consultório</span>
+          <span className="text-gray-300 font-semibold">Setor</span>
           <div className="relative mt-2">
             <FaClinicMedical
               className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -129,10 +134,10 @@ export default function Home() {
             <select
               value={consultorio}
               onChange={(e) => setConsultorio(e.target.value)}
-              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition cursor-pointer"
             >
               <option value="" disabled>
-                Selecione o consultório
+                Selecione o setor
               </option>
               {consultorios.map((c, idx) => (
                 <option key={idx} value={c}>
