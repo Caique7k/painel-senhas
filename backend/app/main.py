@@ -6,6 +6,7 @@ import os
 import uuid
 import time
 import hashlib
+import asyncio
 
 app = FastAPI()
 
@@ -21,6 +22,16 @@ AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 chamadas_recentes = []
+
+async def apagar_audio_apos_3_minutos(path: str):
+    await asyncio.sleep(180)  # espera 3 minutos
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+            print(f"Áudio removido: {path}")
+        except Exception as e:
+            print(f"Erro ao remover áudio: {e}")
+
 
 @app.get("/")
 async def root():
@@ -47,7 +58,7 @@ async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = For
 
     tts = gTTS(text=texto, lang='pt-br')
     tts.save(filepath)
-
+    asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
     chamada = {
         "id": id_hash,
         "paciente": nome_paciente,
