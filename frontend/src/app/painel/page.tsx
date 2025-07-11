@@ -7,6 +7,7 @@ type Senha = {
   consultorio: string;
   audio_url: string;
   timestamp: number; // para controlar o tempo que está na tela
+  numero_chamada?: number;
 };
 
 export default function Painel() {
@@ -84,14 +85,24 @@ export default function Painel() {
           const atualizadas = [...prev, ...chamadasComTimestampMs]
             .filter((chamada) => agora - chamada.timestamp < 180000)
             .reduce<Senha[]>((acc, chamada) => {
-              if (chamada.consultorio === "Triagem") {
+              const normalizado = chamada.consultorio.trim().toLowerCase();
+
+              if (normalizado === "triagem") {
+                // Substitui qualquer outra chamada da triagem
                 return [
-                  ...acc.filter((c) => c.consultorio !== "Triagem"),
+                  ...acc.filter(
+                    (c) => c.consultorio.trim().toLowerCase() !== "triagem"
+                  ),
                   chamada,
                 ];
               }
-              if (acc.some((c) => c.id === chamada.id)) return acc;
-              return acc.concat(chamada);
+
+              // Remove qualquer chamada do mesmo consultório (independente do paciente)
+              const restante = acc.filter(
+                (c) => c.consultorio.trim().toLowerCase() !== normalizado
+              );
+
+              return [...restante, chamada];
             }, []);
 
           // Identifica quais realmente são novas no painel final
@@ -141,7 +152,7 @@ export default function Painel() {
             Nenhuma senha chamada ainda.
           </p>
         ) : (
-          senhas.map(({ id, paciente, consultorio }) => (
+          senhas.map(({ id, paciente, consultorio, numero_chamada }) => (
             <div
               key={id}
               className="bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-12 py-10 rounded-3xl shadow-xl flex flex-col justify-between items-center min-w-[320px]"
@@ -152,6 +163,12 @@ export default function Painel() {
                 <span className="text-5xl font-semibold text-center break-words leading-snug">
                   {paciente}
                 </span>
+
+                {numero_chamada && numero_chamada > 1 && (
+                  <span className="text-lg font-light mt-2">
+                    chamada nº: {numero_chamada}
+                  </span>
+                )}
               </div>
 
               {/* Consultório fixado na parte inferior */}

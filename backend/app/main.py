@@ -23,6 +23,7 @@ AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 chamadas_recentes = []
+historico_chamadas = []
 
 async def apagar_audio_apos_3_minutos(path: str):
     print(f"[DEBUG] Agendado para apagar em 3 minutos: {path}")
@@ -47,58 +48,34 @@ async def chamar_paciente(
     consultorio: str = Form(...),
     setor: str = Form(...)
 ):
-    global chamadas_recentes
+    global chamadas_recentes, historico_chamadas
     agora = time.time()
-
-    # Remove chamadas expiradas (mais de 3 minutos) - atualiza lista in-place
-    chamadas_recentes[:] = [
-        c for c in chamadas_recentes if agora - c["timestamp"] < 180
-    ]
-
-    # Cria ID único para evitar duplicatas exatas
-    id_raw = f"{nome_paciente}-{consultorio}-{setor}"
-    id_hash = hashlib.md5(id_raw.encode("utf-8")).hexdigest()
-
-    # Impede chamada duplicada
-    if any(c["id"] == id_hash for c in chamadas_recentes):
-        return {"error": "Essa chamada já foi realizada recentemente."}
-
-    # Normaliza o nome do consultório para minúsculas e sem espaços extra
     consultorio_normalizado = consultorio.strip().lower()
 
-    # Dicionário com chaves em minúsculas para facilitar a comparação
-    LIMITES_POR_CONSULTORIO = {
-        "triagem": 1,
-        "consultório 1": 1,
-        "consultório 2": 1,
-        "consultório 3": 1,
-        # adicione outros consultórios e seus limites aqui
-    }
-
-    limite = LIMITES_POR_CONSULTORIO.get(consultorio_normalizado, 1)
-
-    chamadas_mesmo_consultorio = [
-        c for c in chamadas_recentes if c["consultorio"].strip().lower() == consultorio_normalizado
+    # Contar somente chamadas dos últimos 3 minutos
+    historico_chamadas[:] = [
+        c for c in historico_chamadas if agora - c["timestamp"] < 180
     ]
 
-    if consultorio_normalizado == "triagem":
-        # Remove chamadas anteriores da triagem para substituir
-        chamadas_recentes[:] = [
-            c for c in chamadas_recentes if c["consultorio"].strip().lower() != "triagem"
-        ]
-    else:
-        # Verifica limite para outros consultórios
-        if len(chamadas_mesmo_consultorio) >= limite:
-            return {
-                "error": f"O limite de {limite} pacientes ativos no {consultorio} foi atingido. Aguarde 3 minutos."
-            }
+    chamadas_anteriores = [
+        c for c in historico_chamadas
+        if c["paciente"] == nome_paciente and c["consultorio"].strip().lower() == consultorio_normalizado
+    ]
+
+    chamada_num = len(chamadas_anteriores) + 1
+
+    if chamada_num > 3:
+        return {"error": "Paciente já foi chamado 3 vezes nos últimos minutos. Chame outro paciente."}
 
     # Gera o áudio
     texto = (
-        f"{nome_paciente}, dirigir-se à {consultorio}"
-        if consultorio_normalizado == "triagem"
-        else f"{nome_paciente}, dirigir-se ao {consultorio}"
+        f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
+        if chamada_num > 1 else
+        (f"{nome_paciente}, dirigir-se à {consultorio}"
+         if consultorio_normalizado == "triagem"
+         else f"{nome_paciente}, dirigir-se ao {consultorio}")
     )
+
     filename = f"{uuid.uuid4()}.mp3"
     filepath = os.path.join(AUDIO_DIR, filename)
 
@@ -107,21 +84,32 @@ async def chamar_paciente(
     asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
 
     chamada = {
-        "id": id_hash,
+        "id": str(uuid.uuid4()),
         "paciente": nome_paciente,
         "consultorio": consultorio,
         "audio_url": f"/static/{filename}",
         "timestamp": agora,
         "setor": setor,
+        "numero_chamada": chamada_num,
     }
 
-    chamadas_recentes.append(chamada)
+    # Remove chamadas expiradas do painel
+    chamadas_recentes[:] = [
+        c for c in chamadas_recentes if agora - c["timestamp"] < 180
+    ]
 
-    # (Opcional) limita a lista geral a 10 chamadas
-    if len(chamadas_recentes) > 10:
-        chamadas_recentes.pop(0)
+    # Substitui qualquer paciente anterior do mesmo consultório
+    chamadas_recentes[:] = [
+        c for c in chamadas_recentes
+        if c["consultorio"].strip().lower() != consultorio_normalizado
+    ]
+
+    chamadas_recentes.append(chamada)
+    historico_chamadas.append(chamada)
 
     return chamada
+
+
 @app.get("/ultimas-chamadas")
 async def ultimas_chamadas(setor: str = Query(...)):
     agora = time.time()
