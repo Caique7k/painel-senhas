@@ -156,19 +156,61 @@ export default function Painel() {
             <div
               key={id}
               className="bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-12 py-10 rounded-3xl shadow-xl flex flex-col justify-between items-center min-w-[320px]"
-              style={{ flex: "1 1 0", maxWidth: "400px", height: "420px" }}
+              style={{
+                flex: "1 1 0",
+                maxWidth: "400px",
+                maxHeight: "600px",
+                overflowY: "auto",
+              }}
             >
               {/* Nome do paciente centralizado */}
-              <div className="flex-grow w-full flex items-center justify-center">
-                <span className="text-5xl font-semibold text-center break-words leading-snug">
+              <div className="flex-grow w-full flex flex-col items-center justify-center px-4">
+                <span
+                  className="text-5xl font-semibold text-center leading-snug break-words max-w-full"
+                  style={{
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3, // limita a 3 linhas
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   {paciente}
                 </span>
 
                 {numero_chamada && numero_chamada > 1 && (
-                  <span className="text-lg font-light mt-2">
-                    chamada nº: {numero_chamada}
+                  <span
+                    className="mt-4 font-bold text-center"
+                    style={{
+                      fontSize: "2.5rem",
+                      animation: "piscar 1s infinite",
+                      color: "white",
+                      textShadow: "0 0 5px red",
+                      maxWidth: "100%",
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      whiteSpace: "normal",
+                    }}
+                  >
+                    CHAMADA Nº {numero_chamada}
                   </span>
                 )}
+
+                <style jsx>{`
+                  @keyframes piscar {
+                    0%,
+                    100% {
+                      color: white;
+                      text-shadow: 0 0 5px red;
+                    }
+                    50% {
+                      color: red;
+                      text-shadow: 0 0 10px white;
+                    }
+                  }
+                `}</style>
               </div>
 
               {/* Consultório fixado na parte inferior */}
