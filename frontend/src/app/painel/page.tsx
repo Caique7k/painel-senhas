@@ -75,24 +75,35 @@ export default function Painel() {
         setSenhas((prev) => {
           const agora = Date.now();
 
-          // Normaliza timestamps para milissegundos
           const chamadasComTimestampMs = data.map((chamada) => ({
             ...chamada,
             timestamp: chamada.timestamp * 1000,
           }));
 
-          // Filtra chamadas novas (que ainda não estão)
-          const novas = chamadasComTimestampMs.filter(
-            (d) => !prev.some((p) => p.id === d.id)
+          // Junta antigas + novas, mas com regra da triagem
+          const atualizadas = [...prev, ...chamadasComTimestampMs]
+            .filter((chamada) => agora - chamada.timestamp < 180000)
+            .reduce<Senha[]>((acc, chamada) => {
+              if (chamada.consultorio === "Triagem") {
+                return [
+                  ...acc.filter((c) => c.consultorio !== "Triagem"),
+                  chamada,
+                ];
+              }
+              if (acc.some((c) => c.id === chamada.id)) return acc;
+              return acc.concat(chamada);
+            }, []);
+
+          // Identifica quais realmente são novas no painel final
+          const idsAntigos = new Set(prev.map((s) => s.id));
+          const idsAtuais = new Set(atualizadas.map((s) => s.id));
+
+          const novosParaTocar = atualizadas.filter(
+            (s) => !idsAntigos.has(s.id)
           );
 
-          // Tocar áudio das novas chamadas
-          novas.forEach((nova) => tocarAudio(nova.audio_url));
-
-          // Combina as antigas e novas, removendo as que passaram de 3 minutos (180000 ms)
-          const atualizadas = [...prev, ...novas].filter(
-            (chamada) => agora - chamada.timestamp < 180000
-          );
+          // Toca som só dos que ficaram de fato no painel
+          novosParaTocar.forEach((s) => tocarAudio(s.audio_url));
 
           return atualizadas;
         });

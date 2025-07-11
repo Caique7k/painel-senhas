@@ -87,10 +87,17 @@ export default function Home() {
       }
 
       const data = await response.json();
-
-      setToast({ message: "Enviado com sucesso!", type: "success" });
-      setNomePaciente("");
-      setConsultorio("");
+      if (data.error) {
+        setToast({
+          message: data.error,
+          type: "error",
+        });
+        return;
+      } else {
+        setToast({ message: "Enviado com sucesso!", type: "success" });
+        setNomePaciente("");
+        setConsultorio("");
+      }
     } catch (error) {
       setToast({
         message: (error as Error).message || "Erro desconhecido",

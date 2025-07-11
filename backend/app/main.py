@@ -42,52 +42,86 @@ async def root():
     return {"message": "API do painel de senhas rodando!"}
 
 @app.post("/chamar")
-async def chamar_paciente(nome_paciente: str = Form(...), consultorio: str = Form(...), setor: str = Form(...)):
-   
-    if consultorio == "Triagem":
-        texto = f" {nome_paciente}, dirigir-se a {consultorio}"
-    else:
-        texto = f" {nome_paciente}, dirigir-se ao {consultorio}"
+async def chamar_paciente(
+    nome_paciente: str = Form(...),
+    consultorio: str = Form(...),
+    setor: str = Form(...)
+):
+    global chamadas_recentes
+    agora = time.time()
 
+    # Remove chamadas expiradas (mais de 3 minutos) - atualiza lista in-place
+    chamadas_recentes[:] = [
+        c for c in chamadas_recentes if agora - c["timestamp"] < 180
+    ]
+
+    # Cria ID único para evitar duplicatas exatas
     id_raw = f"{nome_paciente}-{consultorio}-{setor}"
     id_hash = hashlib.md5(id_raw.encode("utf-8")).hexdigest()
 
-    global chamadas_recentes
+    # Impede chamada duplicada
+    if any(c["id"] == id_hash for c in chamadas_recentes):
+        return {"error": "Essa chamada já foi realizada recentemente."}
 
-    # Verifica se já existe chamada igual
-    chamada_existente = next((c for c in chamadas_recentes if c["id"] == id_hash), None)
-    if chamada_existente:
-        # Não gera áudio nem atualiza timestamp
-        return chamada_existente
+    # Normaliza o nome do consultório para minúsculas e sem espaços extra
+    consultorio_normalizado = consultorio.strip().lower()
 
-    # Se não existe, cria o áudio e registra
+    # Dicionário com chaves em minúsculas para facilitar a comparação
+    LIMITES_POR_CONSULTORIO = {
+        "triagem": 1,
+        "consultório 1": 1,
+        "consultório 2": 1,
+        "consultório 3": 1,
+        # adicione outros consultórios e seus limites aqui
+    }
+
+    limite = LIMITES_POR_CONSULTORIO.get(consultorio_normalizado, 1)
+
+    chamadas_mesmo_consultorio = [
+        c for c in chamadas_recentes if c["consultorio"].strip().lower() == consultorio_normalizado
+    ]
+
+    if consultorio_normalizado == "triagem":
+        # Remove chamadas anteriores da triagem para substituir
+        chamadas_recentes[:] = [
+            c for c in chamadas_recentes if c["consultorio"].strip().lower() != "triagem"
+        ]
+    else:
+        # Verifica limite para outros consultórios
+        if len(chamadas_mesmo_consultorio) >= limite:
+            return {
+                "error": f"O limite de {limite} pacientes ativos no {consultorio} foi atingido. Aguarde 3 minutos."
+            }
+
+    # Gera o áudio
+    texto = (
+        f"{nome_paciente}, dirigir-se à {consultorio}"
+        if consultorio_normalizado == "triagem"
+        else f"{nome_paciente}, dirigir-se ao {consultorio}"
+    )
     filename = f"{uuid.uuid4()}.mp3"
     filepath = os.path.join(AUDIO_DIR, filename)
 
-    tts = gTTS(text=texto, lang='pt-br')
+    tts = gTTS(text=texto, lang="pt-br")
     tts.save(filepath)
     asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
+
     chamada = {
         "id": id_hash,
         "paciente": nome_paciente,
         "consultorio": consultorio,
         "audio_url": f"/static/{filename}",
-        "timestamp": time.time(),
-        "setor": setor
+        "timestamp": agora,
+        "setor": setor,
     }
 
     chamadas_recentes.append(chamada)
 
-    # Remove chamadas expiradas (> 180s)
-    agora = time.time()
-    chamadas_recentes = [c for c in chamadas_recentes if agora - c["timestamp"] < 180]
-
-    # Limita tamanho da lista
+    # (Opcional) limita a lista geral a 10 chamadas
     if len(chamadas_recentes) > 10:
         chamadas_recentes.pop(0)
 
     return chamada
-
 @app.get("/ultimas-chamadas")
 async def ultimas_chamadas(setor: str = Query(...)):
     agora = time.time()
