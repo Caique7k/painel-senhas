@@ -89,8 +89,6 @@ export default function Home() {
         return;
       } else {
         setToast({ message: "Enviado com sucesso!", type: "success" });
-        setNomePaciente("");
-        setConsultorio("");
       }
     } catch (error) {
       setToast({
@@ -121,9 +119,9 @@ export default function Home() {
             <input
               type="text"
               value={nomePaciente}
-              onChange={(e) => setNomePaciente(e.target.value)}
+              onChange={(e) => setNomePaciente(e.target.value.toUpperCase())} // sempre MAIÚSCULO
               placeholder="Digite o nome completo"
-              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+              className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition uppercase" // uppercase para forçar visualmente
               autoFocus
             />
           </div>

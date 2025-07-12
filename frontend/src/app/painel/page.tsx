@@ -130,97 +130,129 @@ export default function Painel() {
 
   return (
     <main
-      className="min-h-screen w-screen p-12 flex flex-col items-center justify-center overflow-hidden"
+      className="min-h-screen w-screen pt-4 px-4 flex flex-col items-center justify-start overflow-y-auto"
       style={{ backgroundColor: "#24235c" }}
     >
-      {/* Header com logo e título */}
-      <header className="flex items-center gap-8 mb-16">
+      {/* Header */}
+      <header className="flex items-center gap-8 mb-6">
         <img
           src="/logo-santa-casa.jpg"
           alt="Santa Casa Logo"
-          className="h-28 w-auto rounded-md shadow-lg"
+          className="h-24 w-auto rounded-md shadow-lg"
         />
-        <h1 className="text-white text-7xl font-extrabold drop-shadow-lg whitespace-nowrap">
+        <h1 className="text-white text-6xl font-extrabold drop-shadow-lg whitespace-nowrap">
           Painel de Senhas
         </h1>
       </header>
 
-      {/* Lista de senhas: exibe em linha com espaçamento */}
-      <section className="w-full max-w-full flex justify-center gap-20">
-        {senhas.length === 0 ? (
-          <p className="text-white text-opacity-70 text-3xl">
-            Nenhuma senha chamada ainda.
-          </p>
-        ) : (
-          senhas.map(({ id, paciente, consultorio, numero_chamada }) => (
-            <div
-              key={id}
-              className="bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-12 py-10 rounded-3xl shadow-xl flex flex-col justify-between items-center min-w-[320px]"
-              style={{
-                flex: "1 1 0",
-                maxWidth: "400px",
-                maxHeight: "600px",
-                overflowY: "auto",
-              }}
-            >
-              {/* Nome do paciente centralizado */}
-              <div className="flex-grow w-full flex flex-col items-center justify-center px-4">
-                <span
-                  className="text-5xl font-semibold text-center leading-snug break-words max-w-full"
-                  style={{
-                    wordBreak: "break-word",
-                    overflowWrap: "break-word",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3, // limita a 3 linhas
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {paciente}
-                </span>
-
-                {numero_chamada && numero_chamada > 1 && (
+      {/* Envolvendo o grid para centralização */}
+      <div className="w-full flex justify-center">
+        <section
+          className="grid"
+          style={{
+            maxWidth: "1300px",
+            width: "100%",
+            gap: "30px 60px", // reduz o espaço entre as linhas
+            display: "grid",
+            gridTemplateColumns:
+              senhas.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
+            gridTemplateRows: senhas.length <= 2 ? "1fr" : "repeat(2, auto)",
+            alignItems: "start",
+            justifyItems: "center",
+            paddingBottom: "10px", // reduz espaço inferior
+          }}
+        >
+          {senhas.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center min-h-[600px]">
+              <p className="text-white text-opacity-70 text-7xl text-center">
+                Nenhuma senha chamada no momento.
+              </p>
+            </div>
+          ) : (
+            senhas.map(({ id, paciente, consultorio, numero_chamada }) => (
+              <div
+                key={id}
+                className="fade-in bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-10 py-6 rounded-3xl shadow-2xl flex flex-col justify-between items-center"
+                style={{
+                  width: "580px",
+                  height: "300px", // altura levemente reduzida
+                }}
+              >
+                <div className="flex-grow w-full flex flex-col items-center justify-center px-4">
                   <span
-                    className="mt-4 font-bold text-center"
+                    className="text-5xl font-bold text-center leading-snug break-words"
                     style={{
-                      fontSize: "2.5rem",
-                      animation: "piscar 1s infinite",
-                      color: "white",
-                      textShadow: "0 0 5px red",
-                      maxWidth: "100%",
                       wordBreak: "break-word",
                       overflowWrap: "break-word",
-                      whiteSpace: "normal",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    CHAMADA Nº {numero_chamada}
+                    {paciente.length > 30
+                      ? paciente.slice(0, 30) + "..."
+                      : paciente}
                   </span>
-                )}
 
-                <style jsx>{`
-                  @keyframes piscar {
-                    0%,
-                    100% {
-                      color: white;
-                      text-shadow: 0 0 5px red;
-                    }
-                    50% {
-                      color: red;
-                      text-shadow: 0 0 10px white;
-                    }
-                  }
-                `}</style>
-              </div>
+                  {numero_chamada && numero_chamada > 1 && (
+                    <span
+                      className="mt-3 font-bold text-center"
+                      style={{
+                        fontSize: "1.9rem",
+                        animation: "piscar 1s infinite",
+                        color: "white",
+                        textShadow: "0 0 5px red",
+                        maxWidth: "100%",
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                        whiteSpace: "normal",
+                      }}
+                    >
+                      CHAMADA Nº {numero_chamada}
+                    </span>
+                  )}
+                </div>
 
-              {/* Consultório fixado na parte inferior */}
-              <div className="w-full text-center mt-auto pt-4 border-t border-white border-opacity-20">
-                <span className="text-4xl font-bold">{consultorio}</span>
+                <div className="w-full text-center mt-auto pt-2 border-t border-white border-opacity-20">
+                  <span className="text-5xl font-bold">{consultorio}</span>
+                </div>
               </div>
-            </div>
-          ))
-        )}
-      </section>
+            ))
+          )}
+        </section>
+      </div>
+
+      {/* Animação */}
+      <style jsx>{`
+        @keyframes piscar {
+          0%,
+          100% {
+            color: white;
+            text-shadow: 0 0 5px red;
+          }
+          50% {
+            color: red;
+            text-shadow: 0 0 10px white;
+          }
+        }
+
+        .fade-in {
+          animation: fadeInScale 0.6s ease-out;
+        }
+
+        @keyframes fadeInScale {
+          0% {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </main>
   );
 }

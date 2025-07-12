@@ -44,7 +44,6 @@ function Toast({ message, type = "error", onClose }: ToastProps) {
 export default function Home() {
   const [nomePaciente, setNomePaciente] = useState<string>("");
   const [consultorio, setConsultorio] = useState<string>("");
-  const [senhas, setSenhas] = useState<string>("");
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success";
@@ -56,6 +55,12 @@ export default function Home() {
     "Consultório 2",
     "Consultório 3",
   ];
+
+  // Função para truncar texto
+  function truncate(text: string, maxLength: number) {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + "...";
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,9 +75,9 @@ export default function Home() {
 
     try {
       const formData = new FormData();
-      formData.append("nome_paciente", nomePaciente);
       formData.append("consultorio", consultorio);
       formData.append("setor", "ps");
+      formData.append("nome_paciente", nomePaciente.trim());
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/chamar`,
@@ -130,9 +135,9 @@ export default function Home() {
               <input
                 type="text"
                 value={nomePaciente}
-                onChange={(e) => setNomePaciente(e.target.value)}
+                onChange={(e) => setNomePaciente(e.target.value.toUpperCase())} // sempre MAIÚSCULO
                 placeholder="Digite o nome completo"
-                className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                className="pl-10 block w-full rounded-md border border-gray-600 bg-gray-700 text-white px-3 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition uppercase" // uppercase para forçar visualmente
                 autoFocus
               />
             </div>
