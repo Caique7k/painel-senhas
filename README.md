@@ -19,9 +19,9 @@ Bem-vindo ao **Painel de Senhas**, um sistema moderno e acessível para organiza
 
 | Camada     | Tecnologias                                    |
 |------------|------------------------------------------------|
-| Frontend   | [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [Tailwind CSS](https://tailwindcss.com/), Zustand |
+| Frontend   | [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [Tailwind CSS](https://tailwindcss.com/) |
 | Backend    | [FastAPI](https://fastapi.tiangolo.com/), WebSocket |
-| Outros     | HTML5, JavaScript (ES6+), Áudio gTTS com Web APIs |
+| Outros     | JavaScript (ES6+), Áudio gTTS com Web APIs |
 
 ---
 
