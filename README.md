@@ -28,7 +28,7 @@ Bem-vindo ao **Painel de Senhas**, um sistema moderno e acessível para organiza
 📺 Modo TV (Painel WebView)
 Abra em qualquer navegador ou app de WebView com o seguinte endereço:
 
-http://<seu-ip-local>:3000/painel
+http://seu.ip.fixo:3000/painel
 
 (Ideal para Smart TVs, Android TV Box ou Raspberry Pi)
 
