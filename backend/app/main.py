@@ -8,8 +8,14 @@ import uuid
 import time
 import hashlib
 import asyncio
+import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
 
 app = FastAPI()
+load_dotenv()
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,6 +24,26 @@ app.add_middleware(
     allow_methods=["*"],   # permite todos os métodos (GET, POST, etc)
     allow_headers=["*"],   # permite todos os headers
 )
+
+def conectar_mysql():
+    try:
+        conexao = mysql.connector.connect(
+            host=os.getenv('DB_HOST'),
+            port=int(os.getenv('DB_PORT')),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_NAME')
+        )
+
+        if conexao.is_connected():
+            print("✅ Conexão com MySQL estabelecida!")
+            return conexao
+    except Error as e:
+        print("❌ Erro ao conectar:", e)
+
+    return None
+if __name__ == "__main__":
+    conectar_mysql()
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
