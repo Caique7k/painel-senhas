@@ -49,7 +49,7 @@ export default function Home() {
     type: "error" | "success";
   } | null>(null);
 
-  const consultorios = ["Triagem"];
+  const consultorios = ["Consultório 2"];
 
   // Função para truncar texto
   function truncate(text: string, maxLength: number) {
