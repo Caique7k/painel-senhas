@@ -11,6 +11,7 @@ import asyncio
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
+from datetime import datetime
 
 app = FastAPI()
 load_dotenv()
@@ -44,6 +45,31 @@ def conectar_mysql():
     return None
 if __name__ == "__main__":
     conectar_mysql()
+
+def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_chamada):
+    conexao = conectar_mysql()
+    if conexao is None:
+        print("Erro na conexão, não foi possível inserir paciente não atendido.")
+        return False
+    try:
+        cursor = conexao.cursor()
+        agora = datetime.now()
+        data = agora.date()
+        hora = agora.time()
+        sql = """
+            INSERT INTO pacientes_nao_atendidos (nome_paciente, setor, consultorio, numero_chamada, data_registro, hora_registro)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        valores = (nome_paciente, setor,consultorio, numero_chamada,  data, hora)
+        cursor.execute(sql, valores)
+        conexao.commit()
+        cursor.close()
+        conexao.close()
+        print("✅ Paciente não atendido inserido com sucesso.")
+        return True
+    except Error as e:
+        print("Erro ao inserir paciente não atendido:", e)
+        return False
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -91,6 +117,7 @@ async def chamar_paciente(
     chamada_num = len(chamadas_anteriores) + 1
 
     if chamada_num > 3:
+        inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
         return {"error": "Paciente já foi chamado 3 vezes nos últimos minutos. Chame outro paciente."}
 
     # Gera o áudio
