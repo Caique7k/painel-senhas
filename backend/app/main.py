@@ -177,8 +177,13 @@ async def ultimas_chamadas(setor: str = Query(...)):
 ]
     return validas
 from fastapi import HTTPException
-
-locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+try:
+    locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')  # Linux/macOS
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')  # Windows
+    except locale.Error:
+        print("Aviso: Locale pt_BR não suportado neste sistema.")
 
 class PDFRelatorio(FPDF):
     def header(self):
