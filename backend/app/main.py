@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 from fpdf import FPDF
 import locale
+from collections import deque
 
 
 
@@ -98,6 +99,28 @@ async def apagar_audio_apos_3_minutos(path: str):
 async def root():
     return {"message": "API do painel de senhas rodando!"}
 
+fila_audios = deque()
+reproduzindo_audio = False
+
+async def processar_fila_audios():
+    global reproduzindo_audio
+    if reproduzindo_audio:
+        return  # Já está processando
+
+    reproduzindo_audio = True
+    while fila_audios:
+        chamada = fila_audios.popleft()
+
+        # Aqui podemos apenas "esperar" um tempo proporcional ao áudio
+        # ou enviar para o painel tocar na ordem
+        print(f"[FILA] Reproduzindo chamada: {chamada['paciente']} - {chamada['audio_url']}")
+
+        # Aguarda o tempo de reprodução (exemplo: 3s por chamada)
+        await asyncio.sleep(3)
+
+    reproduzindo_audio = False
+
+
 @app.post("/chamar")
 async def chamar_paciente(
     nome_paciente: str = Form(...),
@@ -105,10 +128,10 @@ async def chamar_paciente(
     setor: str = Form(...)
 ):
     global chamadas_recentes, historico_chamadas
+
     agora = time.time()
     consultorio_normalizado = consultorio.strip().lower()
 
-    # Contar somente chamadas dos últimos 3 minutos
     historico_chamadas[:] = [
         c for c in historico_chamadas if agora - c["timestamp"] < 180
     ]
@@ -124,7 +147,6 @@ async def chamar_paciente(
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
         return {"error": "Paciente já foi chamado 3 vezes nos últimos minutos. Chame outro paciente."}
 
-    # Gera o áudio
     texto = (
         f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
         if chamada_num > 1 else
@@ -150,19 +172,17 @@ async def chamar_paciente(
         "numero_chamada": chamada_num,
     }
 
-    # Remove chamadas expiradas do painel
     chamadas_recentes[:] = [
         c for c in chamadas_recentes if agora - c["timestamp"] < 180
     ]
-
-    # Substitui qualquer paciente anterior do mesmo consultório
     chamadas_recentes[:] = [
         c for c in chamadas_recentes
         if c["consultorio"].strip().lower() != consultorio_normalizado
     ]
-
     chamadas_recentes.append(chamada)
     historico_chamadas.append(chamada)
+
+ 
 
     return chamada
 

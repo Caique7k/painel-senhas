@@ -1,18 +1,27 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type Senha = {
   id: string;
   paciente: string;
   consultorio: string;
   audio_url: string;
-  timestamp: number; // para controlar o tempo que está na tela
+  timestamp: number;
   numero_chamada?: number;
 };
 
 export default function Painel() {
   const [senhas, setSenhas] = useState<Senha[]>([]);
   const [audioLiberado, setAudioLiberado] = useState(false);
+  const historicoAudios = useRef<
+    { paciente: string; consultorio: string; time: number }[]
+  >([]);
+
+  // Fila e controle de áudio
+  const filaAudios = useRef<Senha[]>([]);
+  const tocando = useRef(false);
+  const idsTocados = useRef<Set<string>>(new Set()); // IDs já tocados
+
   const liberarAudio = () => {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
@@ -27,14 +36,11 @@ export default function Painel() {
       liberarAudio();
       window.removeEventListener("click", handleClick);
     };
-
     window.addEventListener("click", handleClick);
-
-    return () => {
-      window.removeEventListener("click", handleClick);
-    };
+    return () => window.removeEventListener("click", handleClick);
   }, []);
-  // Função para tocar beep curto
+
+  // Beep
   const tocarBeep = () => {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
@@ -53,18 +59,62 @@ export default function Painel() {
     oscillator.start();
     oscillator.stop(ctx.currentTime + 1);
   };
-  // Função para tocar alerta e depois o áudio do backend
-  const tocarAudio = (url: string) => {
+
+  // Processa fila de áudio (garante que toca um por vez)
+  const processarFila = () => {
+    if (tocando.current || filaAudios.current.length === 0) return;
+    tocando.current = true;
+
+    const chamada = filaAudios.current.shift();
+    if (!chamada) {
+      tocando.current = false;
+      return;
+    }
+
     tocarBeep();
     setTimeout(() => {
-      const audio = new Audio(`${process.env.NEXT_PUBLIC_API_URL}${url}`);
-
+      const audio = new Audio(
+        `${process.env.NEXT_PUBLIC_API_URL}${chamada.audio_url}`
+      );
       audio.onerror = () => console.error("Erro ao carregar áudio!");
       audio.play();
-    }, 1000);
-  };
-  // Buscar chamadas a cada 5 segundos
 
+      audio.onended = () => {
+        setTimeout(() => {
+          tocando.current = false;
+          processarFila(); // chama o próximo
+        }, 500); // intervalo entre áudios
+      };
+    }, 1000); // espera beep terminar
+  };
+
+  const adicionarNaFila = (senha: Senha) => {
+    const agora = Date.now();
+
+    // Limpa histórico antigo
+    historicoAudios.current = historicoAudios.current.filter(
+      (h) => agora - h.time < 3000
+    );
+
+    // Verifica se já tocou o mesmo paciente no mesmo consultório nos últimos 3s
+    const repetido = historicoAudios.current.some(
+      (h) =>
+        h.paciente === senha.paciente && h.consultorio === senha.consultorio
+    );
+
+    if (repetido) return;
+
+    historicoAudios.current.push({
+      paciente: senha.paciente,
+      consultorio: senha.consultorio,
+      time: agora,
+    });
+
+    filaAudios.current.push(senha);
+    processarFila();
+  };
+
+  // Buscar chamadas
   useEffect(() => {
     const buscarChamadas = async () => {
       try {
@@ -75,20 +125,16 @@ export default function Painel() {
 
         setSenhas((prev) => {
           const agora = Date.now();
-
-          const chamadasComTimestampMs = data.map((chamada) => ({
-            ...chamada,
-            timestamp: chamada.timestamp * 1000,
+          const chamadasComTimestampMs = data.map((c) => ({
+            ...c,
+            timestamp: c.timestamp * 1000,
           }));
 
-          // Junta antigas + novas, mas com regra da triagem
           const atualizadas = [...prev, ...chamadasComTimestampMs]
-            .filter((chamada) => agora - chamada.timestamp < 180000)
+            .filter((c) => agora - c.timestamp < 180000)
             .reduce<Senha[]>((acc, chamada) => {
               const normalizado = chamada.consultorio.trim().toLowerCase();
-
               if (normalizado === "triagem") {
-                // Substitui qualquer outra chamada da triagem
                 return [
                   ...acc.filter(
                     (c) => c.consultorio.trim().toLowerCase() !== "triagem"
@@ -96,25 +142,20 @@ export default function Painel() {
                   chamada,
                 ];
               }
-
-              // Remove qualquer chamada do mesmo consultório (independente do paciente)
               const restante = acc.filter(
                 (c) => c.consultorio.trim().toLowerCase() !== normalizado
               );
-
               return [...restante, chamada];
             }, []);
 
-          // Identifica quais realmente são novas no painel final
+          // Detecta novas chamadas
           const idsAntigos = new Set(prev.map((s) => s.id));
-          const idsAtuais = new Set(atualizadas.map((s) => s.id));
-
-          const novosParaTocar = atualizadas.filter(
+          const novasChamadas = atualizadas.filter(
             (s) => !idsAntigos.has(s.id)
           );
 
-          // Toca som só dos que ficaram de fato no painel
-          novosParaTocar.forEach((s) => tocarAudio(s.audio_url));
+          // Adiciona novas na fila de áudio sem duplicar
+          novasChamadas.forEach((s) => adicionarNaFila(s));
 
           return atualizadas;
         });
@@ -145,21 +186,21 @@ export default function Painel() {
         </h1>
       </header>
 
-      {/* Envolvendo o grid para centralização */}
+      {/* Grid */}
       <div className="w-full flex justify-center">
         <section
           className="grid"
           style={{
             maxWidth: "1300px",
             width: "100%",
-            gap: "30px 60px", // reduz o espaço entre as linhas
+            gap: "30px 60px",
             display: "grid",
             gridTemplateColumns:
               senhas.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
             gridTemplateRows: senhas.length <= 2 ? "1fr" : "repeat(2, auto)",
             alignItems: "start",
             justifyItems: "center",
-            paddingBottom: "10px", // reduz espaço inferior
+            paddingBottom: "10px",
           }}
         >
           {senhas.length === 0 ? (
@@ -175,7 +216,7 @@ export default function Painel() {
                 className="fade-in bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-10 py-6 rounded-3xl shadow-2xl flex flex-col justify-between items-center"
                 style={{
                   width: "580px",
-                  height: "300px", // altura levemente reduzida
+                  height: "300px",
                 }}
               >
                 <div className="flex-grow w-full flex flex-col items-center justify-center px-4">
@@ -204,10 +245,6 @@ export default function Painel() {
                         animation: "piscar 1s infinite",
                         color: "white",
                         textShadow: "0 0 5px red",
-                        maxWidth: "100%",
-                        wordBreak: "break-word",
-                        overflowWrap: "break-word",
-                        whiteSpace: "normal",
                       }}
                     >
                       CHAMADA Nº {numero_chamada}
@@ -224,7 +261,7 @@ export default function Painel() {
         </section>
       </div>
 
-      {/* Animação */}
+      {/* Animações */}
       <style jsx>{`
         @keyframes piscar {
           0%,
@@ -237,11 +274,9 @@ export default function Painel() {
             text-shadow: 0 0 10px white;
           }
         }
-
         .fade-in {
           animation: fadeInScale 0.6s ease-out;
         }
-
         @keyframes fadeInScale {
           0% {
             opacity: 0;
