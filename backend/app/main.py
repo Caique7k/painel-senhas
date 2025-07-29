@@ -13,6 +13,9 @@ from mysql.connector import Error
 from dotenv import load_dotenv
 from datetime import datetime
 from fpdf import FPDF
+import locale
+
+
 
 app = FastAPI()
 load_dotenv()
@@ -175,6 +178,25 @@ async def ultimas_chamadas(setor: str = Query(...)):
     return validas
 from fastapi import HTTPException
 
+locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+
+class PDFRelatorio(FPDF):
+    def header(self):
+        if self.page_no() == 1:
+            # Exibir logo e título somente na primeira página
+            logo_path = os.path.join(os.path.dirname(__file__), "static", "logo-santa-casa.jpg")
+            self.image(logo_path, x=80, y=10, w=40)  # Reduzi o tamanho também
+
+            self.ln(50)
+            self.set_font("Arial", "B", 18)
+            self.cell(0, 10, "Santa Casa de Misericórdia de Guaíra - Relatório de Não Atendidos", border=False, ln=True, align="C")
+            self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 8)
+        self.cell(0, 10, "Santa Casa de Guaíra - Sistema de Chamadas © 2025", 0, 0, "C")
+
 @app.get("/relatorio-nao-atendidos")
 def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
     conn = conectar_mysql()
@@ -191,17 +213,22 @@ def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
     if not resultados:
         raise HTTPException(status_code=404, detail="Nenhum paciente encontrado para esta data.")
 
+    # Formata a data para exibição no relatório
+    data_formatada = datetime.strptime(data, "%Y-%m-%d").strftime("%d de %B de %Y")
+
     # Criar PDF
-    pdf = FPDF()
+    pdf = PDFRelatorio()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, f"Pacientes não atendidos - {data}", ln=True, align="C")
-    pdf.ln(10)
+    pdf.ln(5)
+    pdf.cell(0, 10, f"Data do relatório: {data_formatada}", ln=True, align="R")
+    pdf.ln(5)
 
     for row in resultados:
         nome, setor, consultorio, numero, hora = row
-        linha = f"{hora} - {nome} | Setor: {setor} | Consultório: {consultorio} | Chamada: {numero}"
-        pdf.cell(200, 10, linha, ln=True)
+        linha = f"{str(hora)[:-3]} - {nome} | Setor: {setor} | CC: {consultorio} | Chamada: {numero}"
+        pdf.multi_cell(0, 10, linha)
 
     # Salvar PDF temporário
     filename = f"relatorio_{data}.pdf"
