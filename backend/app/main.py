@@ -41,10 +41,10 @@ def conectar_mysql():
         )
 
         if conexao.is_connected():
-            print("✅ Conexão com MySQL estabelecida!")
+            print("Conexão com MySQL estabelecida!")
             return conexao
     except Error as e:
-        print("❌ Erro ao conectar:", e)
+        print("Erro ao conectar:", e)
 
     return None
 if __name__ == "__main__":
@@ -69,7 +69,7 @@ def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_cham
         conexao.commit()
         cursor.close()
         conexao.close()
-        print("✅ Paciente não atendido inserido com sucesso.")
+        print("Paciente não atendido inserido com sucesso.")
         return True
     except Error as e:
         print("Erro ao inserir paciente não atendido:", e)
