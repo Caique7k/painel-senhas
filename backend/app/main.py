@@ -12,6 +12,7 @@ import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 from datetime import datetime
+from fpdf import FPDF
 
 app = FastAPI()
 load_dotenv()
@@ -172,6 +173,43 @@ async def ultimas_chamadas(setor: str = Query(...)):
     if agora - c["timestamp"] < 180 and c["setor"] == setor
 ]
     return validas
+from fastapi import HTTPException
+
+@app.get("/relatorio-nao-atendidos")
+def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
+    conn = conectar_mysql()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT nome_paciente, setor, consultorio, numero_chamada, hora_registro 
+        FROM pacientes_nao_atendidos
+        WHERE data_registro = %s
+        ORDER BY hora_registro
+    """, (data,))
+    resultados = cursor.fetchall()
+
+    if not resultados:
+        raise HTTPException(status_code=404, detail="Nenhum paciente encontrado para esta data.")
+
+    # Criar PDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, f"Pacientes não atendidos - {data}", ln=True, align="C")
+    pdf.ln(10)
+
+    for row in resultados:
+        nome, setor, consultorio, numero, hora = row
+        linha = f"{hora} - {nome} | Setor: {setor} | Consultório: {consultorio} | Chamada: {numero}"
+        pdf.cell(200, 10, linha, ln=True)
+
+    # Salvar PDF temporário
+    filename = f"relatorio_{data}.pdf"
+    caminho = os.path.join("relatorios", filename)
+    os.makedirs("relatorios", exist_ok=True)
+    pdf.output(caminho)
+
+    return FileResponse(caminho, filename=filename, media_type='application/pdf')
 
 @app.get("/static/{filename}")
 async def servir_audio(filename: str):

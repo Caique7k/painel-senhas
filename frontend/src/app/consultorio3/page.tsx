@@ -50,12 +50,45 @@ export default function Home() {
   } | null>(null);
 
   const consultorios = ["Consultório 3"];
-
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [dataRelatorio, setDataRelatorio] = useState("");
   // Função para truncar texto
   function truncate(text: string, maxLength: number) {
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength) + "...";
   }
+
+  const [erroRelatorio, setErroRelatorio] = useState("");
+
+  const gerarRelatorio = async () => {
+    if (!dataRelatorio) return;
+
+    try {
+      setErroRelatorio("");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/relatorio-nao-atendidos?data=${dataRelatorio}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          const error = await response.json();
+          setErroRelatorio(error.detail); // <- aqui o "Nenhum paciente encontrado..."
+        } else {
+          setErroRelatorio("Erro ao gerar relatório.");
+        }
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      setErroRelatorio("Erro de conexão com o servidor.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,6 +199,13 @@ export default function Home() {
           >
             Chamar paciente
           </button>
+          <button
+            type="button"
+            onClick={() => setMostrarModal(true)}
+            className="w-full mt-4 rounded-lg border border-indigo-500 text-indigo-300 py-2 font-semibold hover:bg-indigo-700 hover:text-white transition cursor-pointer"
+          >
+            📄 Gerar relatório do dia
+          </button>
         </form>
 
         {/* Toast */}
@@ -193,6 +233,45 @@ export default function Home() {
             animation: fadeInDown 0.3s ease forwards;
           }
         `}</style>
+        {mostrarModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm text-white">
+              <h2 className="text-xl font-bold mb-4">
+                Relatório de Não Atendidos
+              </h2>
+              <label className="block mb-4">
+                <span className="text-gray-300 font-semibold">Data</span>
+                <input
+                  type="date"
+                  value={dataRelatorio}
+                  onChange={(e) => setDataRelatorio(e.target.value)}
+                  className="block w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </label>
+              {erroRelatorio && (
+                <p className="text-red-400 text-sm mt-2">{erroRelatorio}</p>
+              )}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setMostrarModal(false);
+                    setErroRelatorio("");
+                  }}
+                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={gerarRelatorio}
+                  disabled={!dataRelatorio}
+                  className="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500 font-semibold disabled:opacity-50 cursor-pointer"
+                >
+                  Baixar PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

@@ -2,3 +2,6 @@ fastapi
 uvicorn
 gtts
 python-multipart
+fpdf
+python-dotenv
+mysql-connector-python
