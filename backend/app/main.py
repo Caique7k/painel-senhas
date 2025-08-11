@@ -51,30 +51,52 @@ def conectar_mysql():
 if __name__ == "__main__":
     conectar_mysql()
 
-def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_chamada):
+def inserir_paciente(nome_paciente, setor, consultorio, numero_chamada):
     conexao = conectar_mysql()
     if conexao is None:
-        print("Erro na conexão, não foi possível inserir paciente não atendido.")
+        print("Erro na conexão, não foi possível inserir paciente.")
         return False
     try:
+        
         cursor = conexao.cursor()
         agora = datetime.now()
-        data = agora.date()
-        hora = agora.time()
         sql = """
-            INSERT INTO pacientes_nao_atendidos (nome_paciente, setor, consultorio, numero_chamada, data_registro, hora_registro)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO pacientes_atendidos (nome_paciente, setor, consultorio, data_registro, hora_registro)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        valores = (nome_paciente, setor,consultorio, numero_chamada,  data, hora)
-        cursor.execute(sql, valores)
+        cursor.execute(sql, (nome_paciente, setor, consultorio, agora.date(), agora.time()))
         conexao.commit()
         cursor.close()
         conexao.close()
-        print("Paciente não atendido inserido com sucesso.")
-        return True
-    except Error as e:
-        print("Erro ao inserir paciente não atendido:", e)
+    except Exception as e:
+        print("Erro ao inserir paciente atendido:", e)
         return False
+    
+            
+def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_chamada):
+        conexao = conectar_mysql()
+        if conexao is None:
+            print("Erro na conexão, não foi possível inserir paciente não atendido.")
+            return False
+        try:
+            cursor = conexao.cursor()
+            agora = datetime.now()
+            data = agora.date()
+            hora = agora.time()
+            sql = """
+                INSERT INTO pacientes_nao_atendidos (nome_paciente, setor, consultorio, numero_chamada, data_registro, hora_registro)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            valores = (nome_paciente, setor,consultorio, numero_chamada,  data, hora)
+            cursor.execute(sql, valores)
+            conexao.commit()
+            cursor.close()
+            conexao.close()
+            print("Paciente não atendido inserido com sucesso.")
+            return True
+        except Error as e:
+            print("Erro ao inserir paciente não atendido:", e)
+            return False
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -142,6 +164,10 @@ async def chamar_paciente(
     ]
 
     chamada_num = len(chamadas_anteriores) + 1
+    
+    if chamada_num == 1:
+        inserir_paciente(nome_paciente, setor, consultorio_normalizado, chamada_num)
+        
 
     if chamada_num > 3:
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
