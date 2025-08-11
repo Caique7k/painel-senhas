@@ -240,13 +240,51 @@ class PDFRelatorio(FPDF):
 
             self.ln(50)
             self.set_font("Arial", "B", 18)
-            self.cell(0, 10, "Santa Casa de Misericórdia de Guaíra - Relatório de Não Atendidos", border=False, ln=True, align="C")
+            self.cell(0, 10, "Santa Casa de Misericórdia de Guaíra - Relatório ", border=False, ln=True, align="C")
             self.ln(5)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
         self.cell(0, 10, "Santa Casa de Guaíra - Sistema de Chamadas © 2025", 0, 0, "C")
+
+@app.get("/relatorio-atendidos")
+def gerar_relatorio_atendidos(data: str = Query(...)):
+    conn = conectar_mysql()
+    cursor = conn.cursor()
+    data_date = datetime.strptime(data, "%Y-%m-%d").date()
+    cursor.execute("""
+        SELECT nome_paciente, setor, consultorio, hora_registro
+        FROM pacientes_atendidos
+        WHERE data_registro = %s
+        ORDER BY hora_registro
+    """, (data_date,))
+    resultados = cursor.fetchall()
+
+    if not resultados:
+        raise HTTPException(status_code=404, detail="Nenhum paciente atendido nesta data.")
+
+    data_formatada = datetime.strptime(data, "%Y-%m-%d").strftime("%d de %B de %Y")
+
+    pdf = PDFRelatorio()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.ln(5)
+    pdf.cell(0, 10, f"Relatório de pacientes chamados - {data_formatada}", ln=True)
+    pdf.ln(5)
+
+    for row in resultados:
+        nome, setor, consultorio, hora = row
+        linha = f"{str(hora)[:-3]} - {nome} | Setor: {setor} | CC: {consultorio}"
+        pdf.multi_cell(0, 10, linha)
+
+    filename = f"relatorio_atendidos_{data}.pdf"
+    caminho = os.path.join("relatorios", filename)
+    os.makedirs("relatorios", exist_ok=True)
+    pdf.output(caminho)
+
+    return FileResponse(caminho, filename=filename, media_type="application/pdf")
 
 @app.get("/relatorio-nao-atendidos")
 def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
@@ -273,7 +311,7 @@ def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.set_font("Arial", size=12)
     pdf.ln(5)
-    pdf.cell(0, 10, f"Data do relatório: {data_formatada}", ln=True, align="R")
+    pdf.cell(0, 10, f"Data do relatório de pacientes que não responderam ao chamado: {data_formatada}", ln=True, align="R")
     pdf.ln(5)
 
     for row in resultados:

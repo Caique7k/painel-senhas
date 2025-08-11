@@ -49,7 +49,7 @@ export default function Home() {
     type: "error" | "success";
   } | null>(null);
 
-  const consultorios = ["Consultório 2"];
+  const consultorios = ["Consultório 1"];
   const [mostrarModal, setMostrarModal] = useState(false);
   const [dataRelatorio, setDataRelatorio] = useState("");
   // Função para truncar texto
@@ -60,32 +60,25 @@ export default function Home() {
 
   const [erroRelatorio, setErroRelatorio] = useState("");
 
-  const gerarRelatorio = async () => {
+  const gerarRelatorio = async (tipo: "atendidos" | "nao-atendidos") => {
     if (!dataRelatorio) return;
 
     try {
       setErroRelatorio("");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/relatorio-nao-atendidos?data=${dataRelatorio}`,
-        {
-          method: "GET",
-        }
+        `${process.env.NEXT_PUBLIC_API_URL}/relatorio-${tipo}?data=${dataRelatorio}`
       );
 
       if (!response.ok) {
-        if (response.status === 404) {
-          const error = await response.json();
-          setErroRelatorio(error.detail); // <- aqui o "Nenhum paciente encontrado..."
-        } else {
-          setErroRelatorio("Erro ao gerar relatório.");
-        }
+        const data = await response.json();
+        setErroRelatorio(data.detail || "Erro ao gerar relatório.");
         return;
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank");
-    } catch (error) {
+    } catch {
       setErroRelatorio("Erro de conexão com o servidor.");
     }
   };
@@ -204,7 +197,7 @@ export default function Home() {
             onClick={() => setMostrarModal(true)}
             className="w-full mt-4 rounded-lg border border-indigo-500 text-indigo-300 py-2 font-semibold hover:bg-indigo-700 hover:text-white transition cursor-pointer"
           >
-            📄 Gerar relatório do dia
+            📄 Gerar relatório
           </button>
         </form>
 
@@ -236,9 +229,7 @@ export default function Home() {
         {mostrarModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div className="bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm text-white">
-              <h2 className="text-xl font-bold mb-4">
-                Relatório de Não Atendidos
-              </h2>
+              <h2 className="text-xl font-bold mb-4">Relatório</h2>
               <label className="block mb-4">
                 <span className="text-gray-300 font-semibold">Data</span>
                 <input
@@ -262,11 +253,18 @@ export default function Home() {
                   Cancelar
                 </button>
                 <button
-                  onClick={gerarRelatorio}
+                  onClick={() => gerarRelatorio("nao-atendidos")}
                   disabled={!dataRelatorio}
                   className="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500 font-semibold disabled:opacity-50 cursor-pointer"
                 >
-                  Baixar PDF
+                  Baixar PDF Não Atendidos
+                </button>
+                <button
+                  onClick={() => gerarRelatorio("atendidos")}
+                  disabled={!dataRelatorio}
+                  className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-semibold disabled:opacity-50 cursor-pointer"
+                >
+                  Baixar PDF Atendidos
                 </button>
               </div>
             </div>
