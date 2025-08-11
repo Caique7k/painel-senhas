@@ -232,6 +232,10 @@ except locale.Error:
         print("Aviso: Locale pt_BR não suportado neste sistema.")
 
 class PDFRelatorio(FPDF):
+    def __init__(self, titulo: str = "Relatório de Pacientes"):
+        super().__init__()
+        self.titulo = titulo
+
     def header(self):
         if self.page_no() == 1:
             # Exibir logo e título somente na primeira página
@@ -240,7 +244,7 @@ class PDFRelatorio(FPDF):
 
             self.ln(50)
             self.set_font("Arial", "B", 18)
-            self.cell(0, 10, "Santa Casa de Misericórdia de Guaíra - Relatório ", border=False, ln=True, align="C")
+            self.cell(0, 10, f"Santa Casa de Misericórdia de Guaíra - {self.titulo} ", border=False, ln=True, align="C")
             self.ln(5)
 
     def footer(self):
@@ -266,12 +270,12 @@ def gerar_relatorio_atendidos(data: str = Query(...)):
 
     data_formatada = datetime.strptime(data, "%Y-%m-%d").strftime("%d de %B de %Y")
 
-    pdf = PDFRelatorio()
+    pdf = PDFRelatorio("Relatório de chamados")
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.ln(5)
-    pdf.cell(0, 10, f"Relatório de pacientes chamados - {data_formatada}", ln=True)
+    pdf.cell(0, 10, f"Data do relatório de pacientes que foram chamados: {data_formatada}", ln=True, align="R")
     pdf.ln(5)
 
     for row in resultados:
@@ -306,7 +310,7 @@ def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
     data_formatada = datetime.strptime(data, "%Y-%m-%d").strftime("%d de %B de %Y")
 
     # Criar PDF
-    pdf = PDFRelatorio()
+    pdf = PDFRelatorio("Relatório de Não Atendidos")
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.set_font("Arial", size=12)
