@@ -207,27 +207,25 @@ export default function Painel() {
                 className="fade-in bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-10 py-6 rounded-3xl shadow-2xl flex flex-col justify-between items-center"
                 style={{ width: "580px", height: "300px" }}
               >
-                <div className="flex-grow w-full flex flex-col items-center justify-center px-4">
+                <div className="flex flex-col items-center w-full gap-2 px-4">
                   <span
                     className="text-5xl font-bold text-center leading-snug break-words"
                     style={{
                       wordBreak: "break-word",
                       overflowWrap: "break-word",
                       display: "-webkit-box",
-                      WebkitLineClamp: 3,
+                      WebkitLineClamp: 2,
                       WebkitBoxOrient: "vertical",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {paciente.length > 30
-                      ? paciente.slice(0, 30) + "..."
-                      : paciente}
+                    {paciente}
                   </span>
 
                   {numero_chamada && numero_chamada > 1 && (
                     <span
-                      className="mt-3 font-bold text-center"
+                      className="font-bold text-center"
                       style={{
                         fontSize: "1.9rem",
                         animation: "piscar 1s infinite",
@@ -240,7 +238,7 @@ export default function Painel() {
                   )}
                 </div>
 
-                <div className="w-full text-center mt-auto pt-2 border-t border-white border-opacity-20">
+                <div className="w-full text-center pt-4 border-t border-white border-opacity-20 mt-4">
                   <span className="text-5xl font-bold">{consultorio}</span>
                 </div>
               </div>
