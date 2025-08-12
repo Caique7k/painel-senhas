@@ -264,7 +264,7 @@ export default function Home() {
                   disabled={!dataRelatorio}
                   className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-semibold disabled:opacity-50 cursor-pointer"
                 >
-                  Baixar PDF Atendidos
+                  Baixar PDF de Chamados
                 </button>
               </div>
             </div>
