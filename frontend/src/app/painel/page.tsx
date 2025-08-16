@@ -8,19 +8,21 @@ type Senha = {
   audio_url: string;
   timestamp: number;
   numero_chamada?: number;
+  nao_atendido?: boolean;
 };
 
 export default function Painel() {
   const [senhas, setSenhas] = useState<Senha[]>([]);
+  const [ultimasChamadas, setUltimasChamadas] = useState<Senha[]>([]);
+  const [chamadaAtual, setChamadaAtual] = useState<Senha | null>(null);
+  const [horaAtual, setHoraAtual] = useState(new Date());
   const [audioLiberado, setAudioLiberado] = useState(false);
+
   const historicoAudios = useRef<
     { paciente: string; consultorio: string; time: number }[]
   >([]);
-
-  // Fila e controle de áudio
   const filaAudios = useRef<Senha[]>([]);
   const tocando = useRef(false);
-  const idsTocados = useRef<Set<string>>(new Set()); // IDs já tocados
 
   const liberarAudio = () => {
     const ctx = new AudioContext();
@@ -40,27 +42,21 @@ export default function Painel() {
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
-  // Beep
   const tocarBeep = () => {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
-
     oscillator.type = "triangle";
     oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
     gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
-
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
-
     oscillator.start();
     oscillator.stop(ctx.currentTime + 1);
   };
 
-  // Processa fila de áudio (garante que toca um por vez)
   const processarFila = () => {
     if (tocando.current || filaAudios.current.length === 0) return;
     tocando.current = true;
@@ -71,7 +67,9 @@ export default function Painel() {
       return;
     }
 
+    setChamadaAtual(chamada);
     tocarBeep();
+
     setTimeout(() => {
       const audio = new Audio(
         `${process.env.NEXT_PUBLIC_API_URL}${chamada.audio_url}`
@@ -80,28 +78,51 @@ export default function Painel() {
       audio.play();
 
       audio.onended = () => {
-        setTimeout(() => {
-          tocando.current = false;
-          processarFila(); // chama o próximo
-        }, 500); // intervalo entre áudios
+        setUltimasChamadas((old) => {
+          const todasChamadas = [chamada, ...old];
+
+          // Consolida chamadas por paciente + consultório
+          const consolidado: Senha[] = [];
+          const mapChamadas: Record<string, number> = {};
+
+          for (const c of todasChamadas) {
+            const key = `${c.paciente.trim().toLowerCase()}-${c.consultorio
+              .trim()
+              .toLowerCase()}`;
+            mapChamadas[key] = (mapChamadas[key] || 0) + 1;
+            console.log(key, mapChamadas[key]);
+
+            const existe = consolidado.find(
+              (x) =>
+                x.paciente === c.paciente && x.consultorio === c.consultorio
+            );
+
+            if (!existe) {
+              consolidado.push({ ...c, numero_chamada: mapChamadas[key] });
+            } else {
+              existe.numero_chamada = mapChamadas[key];
+            }
+          }
+
+          return consolidado.slice(0, 4); // últimas 4 chamadas
+        });
+
+        tocando.current = false;
+        processarFila();
       };
-    }, 1000); // espera beep terminar
+    }, 1000);
   };
 
   const adicionarNaFila = (senha: Senha) => {
     const agora = Date.now();
-
-    // Limpa histórico antigo
     historicoAudios.current = historicoAudios.current.filter(
       (h) => agora - h.time < 3000
     );
 
-    // Verifica se já tocou o mesmo paciente no mesmo consultório nos últimos 3s
     const repetido = historicoAudios.current.some(
       (h) =>
         h.paciente === senha.paciente && h.consultorio === senha.consultorio
     );
-
     if (repetido) return;
 
     historicoAudios.current.push({
@@ -109,12 +130,15 @@ export default function Painel() {
       consultorio: senha.consultorio,
       time: agora,
     });
-
     filaAudios.current.push(senha);
     processarFila();
   };
 
-  // Buscar chamadas
+  useEffect(() => {
+    const timer = setInterval(() => setHoraAtual(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const buscarChamadas = async () => {
       try {
@@ -134,27 +158,18 @@ export default function Painel() {
             .filter((c) => agora - c.timestamp < 180000)
             .reduce<Senha[]>((acc, chamada) => {
               const normalizado = chamada.consultorio.trim().toLowerCase();
-              if (normalizado === "triagem") {
-                return [
-                  ...acc.filter(
-                    (c) => c.consultorio.trim().toLowerCase() !== "triagem"
-                  ),
-                  chamada,
-                ];
-              }
-              const restante = acc.filter(
-                (c) => c.consultorio.trim().toLowerCase() !== normalizado
-              );
-              return [...restante, chamada];
+              return [
+                ...acc.filter(
+                  (c) => c.consultorio.trim().toLowerCase() !== normalizado
+                ),
+                chamada,
+              ];
             }, []);
 
-          // Detecta novas chamadas
           const idsAntigos = new Set(prev.map((s) => s.id));
           const novasChamadas = atualizadas.filter(
             (s) => !idsAntigos.has(s.id)
           );
-
-          // Adiciona novas na fila de áudio sem duplicar
           novasChamadas.forEach((s) => adicionarNaFila(s));
 
           return atualizadas;
@@ -171,118 +186,93 @@ export default function Painel() {
 
   return (
     <main
-      className="min-h-screen w-screen pt-4 px-4 flex flex-col items-center justify-start overflow-y-auto"
+      className="min-h-screen w-screen flex flex-col"
       style={{ backgroundColor: "#24235c" }}
     >
       {/* Header */}
-      <header className="flex items-center gap-8 mb-6">
-        <img
-          src="/logo-santa-casa.jpg"
-          alt="Santa Casa Logo"
-          className="h-24 w-auto rounded-md shadow-lg"
-        />
-        <h1 className="text-white text-6xl font-extrabold drop-shadow-lg whitespace-nowrap">
-          Painel de Senhas
-        </h1>
+      <header className="flex justify-between items-center px-8 py-4 border-b border-white/20">
+        <div className="flex items-center gap-4">
+          <img
+            src="/logo-santa-casa.jpg"
+            alt="Santa Casa Logo"
+            className="h-20 w-auto"
+          />
+          <h1 className="text-white text-4xl font-bold">
+            Santa Casa de Misericórdia de Guaíra
+          </h1>
+        </div>
+        <div className="text-right text-white text-2xl">
+          <p>
+            {horaAtual.toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+          <p>{horaAtual.toLocaleDateString("pt-BR")}</p>
+        </div>
       </header>
 
-      {/* Grid */}
-      <div className="w-full flex justify-center">
-        <section
-          className="grid"
-          style={{
-            maxWidth: "1300px",
-            width: "100%",
-            gap: "30px 60px",
-            display: "grid",
-            gridTemplateColumns:
-              senhas.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
-            gridTemplateRows: senhas.length <= 2 ? "1fr" : "repeat(2, auto)",
-            alignItems: "start",
-            justifyItems: "center",
-            paddingBottom: "10px",
-          }}
-        >
-          {senhas.length === 0 ? (
-            <div className="col-span-full flex items-center justify-center min-h-[600px]">
-              <p className="text-white text-opacity-70 text-7xl text-center">
-                Nenhuma senha chamada no momento.
+      {/* Paciente Atual */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        {chamadaAtual ? (
+          <>
+            <h2 className="text-white text-7xl font-extrabold text-center">
+              {chamadaAtual.paciente}
+            </h2>
+            {chamadaAtual.numero_chamada && chamadaAtual.numero_chamada > 1 && (
+              <p className="text-red-500 text-3xl font-bold animate-pulse mt-2">
+                CHAMADA Nº {chamadaAtual.numero_chamada}
               </p>
-            </div>
-          ) : (
-            senhas.map(({ id, paciente, consultorio, numero_chamada }) => (
-              <div
-                key={id}
-                className="fade-in bg-gradient-to-r from-indigo-700 to-purple-900 text-white px-10 py-6 rounded-3xl shadow-2xl flex flex-col justify-between items-center"
-                style={{ width: "580px", height: "300px" }}
-              >
-                <div className="flex flex-col items-center w-full gap-2 px-4">
-                  <span
-                    className="text-5xl font-bold text-center leading-snug break-words"
-                    style={{
-                      wordBreak: "break-word",
-                      overflowWrap: "break-word",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {paciente}
-                  </span>
-
-                  {numero_chamada && numero_chamada > 1 && (
-                    <span
-                      className="font-bold text-center"
-                      style={{
-                        fontSize: "1.9rem",
-                        animation: "piscar 1s infinite",
-                        color: "white",
-                        textShadow: "0 0 5px red",
-                      }}
-                    >
-                      CHAMADA Nº {numero_chamada}
-                    </span>
-                  )}
-                </div>
-
-                <div className="w-full text-center pt-4 border-t border-white border-opacity-20 mt-4">
-                  <span className="text-5xl font-bold">{consultorio}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
+            )}
+            <p className="text-white text-5xl mt-6">
+              {chamadaAtual.consultorio}
+            </p>
+          </>
+        ) : ultimasChamadas[0] ? (
+          <>
+            <h2 className="text-white text-7xl font-extrabold text-center">
+              {ultimasChamadas[0].paciente}
+            </h2>
+            {ultimasChamadas[0].numero_chamada &&
+              ultimasChamadas[0].numero_chamada > 1 && (
+                <p className="text-red-500 text-3xl font-bold animate-pulse mt-2">
+                  CHAMADA Nº {ultimasChamadas[0].numero_chamada}
+                </p>
+              )}
+            <p className="text-white text-5xl mt-6">
+              {ultimasChamadas[0].consultorio}
+            </p>
+          </>
+        ) : (
+          <p className="text-white/70 text-5xl">Nenhum paciente chamado</p>
+        )}
       </div>
 
-      {/* Animações */}
-      <style jsx>{`
-        @keyframes piscar {
-          0%,
-          100% {
-            color: white;
-            text-shadow: 0 0 5px red;
-          }
-          50% {
-            color: red;
-            text-shadow: 0 0 10px white;
-          }
-        }
-        .fade-in {
-          animation: fadeInScale 0.6s ease-out;
-        }
-        @keyframes fadeInScale {
-          0% {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
+      {/* Últimas Chamadas */}
+      <div className="bg-white/10 p-4">
+        <h3 className="text-white text-2xl font-semibold mb-2">
+          Últimas Chamadas
+        </h3>
+        <ul className="space-y-2">
+          {ultimasChamadas.map((c) => (
+            <li
+              key={c.id}
+              className="flex justify-between text-white text-2xl md:text-3xl border-b border-white/20 pb-1"
+            >
+              <span>
+                {new Date(c.timestamp).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                - {c.paciente}
+              </span>
+              <span>
+                {c.nao_atendido ? "Não respondeu ao chamado" : c.consultorio}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </main>
   );
 }

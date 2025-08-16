@@ -164,14 +164,36 @@ async def chamar_paciente(
     ]
 
     chamada_num = len(chamadas_anteriores) + 1
+    nao_respondido = False
     
     if chamada_num == 1:
         inserir_paciente(nome_paciente, setor, consultorio_normalizado, chamada_num)
+        nao_respondido = False
         
 
-    if chamada_num > 3:
+    if chamada_num == 4:
+        # Registrar paciente como não atendido
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
-        return {"error": "Paciente já foi chamado 3 vezes nos últimos minutos. Chame outro paciente."}
+        nao_respondido = True
+
+        # Atualiza histórico mesmo sem tocar áudio
+        chamada = {
+            "id": str(uuid.uuid4()),
+            "paciente": nome_paciente,
+            "consultorio": consultorio,
+            "audio_url": None,
+            "timestamp": time.time(),
+            "setor": setor,
+            "numero_chamada": chamada_num,
+            "nao_atendido": True
+        }
+        historico_chamadas.append(chamada)
+        chamadas_recentes.append(chamada)
+
+        # Retorna erro para o frontend
+        return {"error": "Paciente já foi chamado 3 vezes. Chame outro paciente."}
+       
+    
 
     texto = (
         f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
@@ -196,6 +218,7 @@ async def chamar_paciente(
         "timestamp": agora,
         "setor": setor,
         "numero_chamada": chamada_num,
+        "nao_atendido": nao_respondido
     }
 
     chamadas_recentes[:] = [
