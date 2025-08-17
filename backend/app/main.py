@@ -154,84 +154,75 @@ async def chamar_paciente(
     agora = time.time()
     consultorio_normalizado = consultorio.strip().lower()
 
+    # Limpa histórico recente
     historico_chamadas[:] = [
         c for c in historico_chamadas if agora - c["timestamp"] < 180
     ]
 
+    # Conta chamadas anteriores do paciente no consultório
     chamadas_anteriores = [
         c for c in historico_chamadas
         if c["paciente"] == nome_paciente and c["consultorio"].strip().lower() == consultorio_normalizado
     ]
-
     chamada_num = len(chamadas_anteriores) + 1
-    nao_respondido = False
-    
+
+    # Define se é não atendido
+    nao_respondido = chamada_num > 3
+
+    # Salva no banco
     if chamada_num == 1:
         inserir_paciente(nome_paciente, setor, consultorio_normalizado, chamada_num)
-        nao_respondido = False
-        
-
-    if chamada_num == 4:
-        # Registrar paciente como não atendido
+    elif nao_respondido:
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
-        nao_respondido = True
 
-        # Atualiza histórico mesmo sem tocar áudio
-        chamada = {
-            "id": str(uuid.uuid4()),
-            "paciente": nome_paciente,
-            "consultorio": consultorio,
-            "audio_url": None,
-            "timestamp": time.time(),
-            "setor": setor,
-            "numero_chamada": chamada_num,
-            "nao_atendido": True
-        }
-        historico_chamadas.append(chamada)
-        chamadas_recentes.append(chamada)
+    # Gera texto do áudio só se não for não atendido
+    if not nao_respondido:
+        texto = (
+            f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
+            if chamada_num > 1 else
+            (f"{nome_paciente}, dirigir-se à {consultorio}"
+             if consultorio_normalizado == "triagem"
+             else f"{nome_paciente}, dirigir-se ao {consultorio}")
+        )
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join(AUDIO_DIR, filename)
+        tts = gTTS(text=texto, lang="pt-br")
+        tts.save(filepath)
+        asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
+        audio_url = f"/static/{filename}"
+    else:
+        # Áudio silencioso curto para evitar erro
+        audio_url = "/static/audio_silencioso.mp3"
 
-        # Retorna erro para o frontend
-        return {"error": "Paciente já foi chamado 3 vezes. Chame outro paciente."}
-       
-    
-
-    texto = (
-        f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
-        if chamada_num > 1 else
-        (f"{nome_paciente}, dirigir-se à {consultorio}"
-         if consultorio_normalizado == "triagem"
-         else f"{nome_paciente}, dirigir-se ao {consultorio}")
-    )
-
-    filename = f"{uuid.uuid4()}.mp3"
-    filepath = os.path.join(AUDIO_DIR, filename)
-
-    tts = gTTS(text=texto, lang="pt-br")
-    tts.save(filepath)
-    asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
-
+    # Cria registro da chamada
     chamada = {
         "id": str(uuid.uuid4()),
         "paciente": nome_paciente,
         "consultorio": consultorio,
-        "audio_url": f"/static/{filename}",
+        "audio_url": audio_url,
         "timestamp": agora,
         "setor": setor,
         "numero_chamada": chamada_num,
         "nao_atendido": nao_respondido
     }
 
+        # Atualiza listas em memória
     chamadas_recentes[:] = [
-        c for c in chamadas_recentes if agora - c["timestamp"] < 180
+        c for c in chamadas_recentes if agora - c["timestamp"] < 180 and c["consultorio"].strip().lower() != consultorio_normalizado
     ]
-    chamadas_recentes[:] = [
-        c for c in chamadas_recentes
-        if c["consultorio"].strip().lower() != consultorio_normalizado
-    ]
-    chamadas_recentes.append(chamada)
+
+    # Só adiciona ao painel se for até 3ª chamada
+    if chamada_num <= 3:
+        chamadas_recentes.append(chamada)
+
+    # Histórico sempre recebe
     historico_chamadas.append(chamada)
 
- 
+    if nao_respondido:
+        return {
+            "error": "Paciente já foi chamado 3 vezes. Chame outro paciente.",
+            "paciente": chamada
+        }
 
     return chamada
 
@@ -239,12 +230,30 @@ async def chamar_paciente(
 @app.get("/ultimas-chamadas")
 async def ultimas_chamadas(setor: str = Query(...)):
     agora = time.time()
-    # Retorna só chamadas com menos de 180 segundos
-    validas = [
-    c for c in chamadas_recentes
-    if agora - c["timestamp"] < 180 and c["setor"] == setor
-]
+    validas = []
+
+    # Agrupa chamadas por paciente usando o HISTÓRICO, não apenas o painel
+    chamadas_por_paciente = {}
+    for c in historico_chamadas:
+        if c["setor"] == setor:
+            paciente = c["paciente"]
+            chamadas_por_paciente.setdefault(paciente, []).append(c)
+
+    for paciente, chamadas in chamadas_por_paciente.items():
+        ultima = chamadas[-1]  # pega a última chamada válida
+        chamada = dict(ultima)
+
+        # Conta todas as chamadas no histórico para este paciente/ setor
+        total_chamadas = len(chamadas)
+
+        # Marca não atendido se já passou da 3ª chamada
+        chamada["nao_atendido"] = total_chamadas > 3
+        validas.append(chamada)
+
     return validas
+
+
+
 from fastapi import HTTPException
 try:
     locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')  # Linux/macOS

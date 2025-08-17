@@ -68,6 +68,14 @@ export default function Painel() {
     }
 
     setChamadaAtual(chamada);
+
+    if (chamada.nao_atendido) {
+      // Chamada não atendida: não toca áudio, só exibe no painel
+      tocando.current = false;
+      processarFila();
+      return;
+    }
+
     tocarBeep();
 
     setTimeout(() => {
@@ -78,35 +86,6 @@ export default function Painel() {
       audio.play();
 
       audio.onended = () => {
-        setUltimasChamadas((old) => {
-          const todasChamadas = [chamada, ...old];
-
-          // Consolida chamadas por paciente + consultório
-          const consolidado: Senha[] = [];
-          const mapChamadas: Record<string, number> = {};
-
-          for (const c of todasChamadas) {
-            const key = `${c.paciente.trim().toLowerCase()}-${c.consultorio
-              .trim()
-              .toLowerCase()}`;
-            mapChamadas[key] = (mapChamadas[key] || 0) + 1;
-            console.log(key, mapChamadas[key]);
-
-            const existe = consolidado.find(
-              (x) =>
-                x.paciente === c.paciente && x.consultorio === c.consultorio
-            );
-
-            if (!existe) {
-              consolidado.push({ ...c, numero_chamada: mapChamadas[key] });
-            } else {
-              existe.numero_chamada = mapChamadas[key];
-            }
-          }
-
-          return consolidado.slice(0, 4); // últimas 4 chamadas
-        });
-
         tocando.current = false;
         processarFila();
       };
@@ -115,23 +94,37 @@ export default function Painel() {
 
   const adicionarNaFila = (senha: Senha) => {
     const agora = Date.now();
+
+    // Atualiza o histórico de áudio para evitar repetição
     historicoAudios.current = historicoAudios.current.filter(
       (h) => agora - h.time < 3000
     );
-
     const repetido = historicoAudios.current.some(
       (h) =>
         h.paciente === senha.paciente && h.consultorio === senha.consultorio
     );
-    if (repetido) return;
+    if (!repetido) {
+      historicoAudios.current.push({
+        paciente: senha.paciente,
+        consultorio: senha.consultorio,
+        time: agora,
+      });
 
-    historicoAudios.current.push({
-      paciente: senha.paciente,
-      consultorio: senha.consultorio,
-      time: agora,
+      // Se for chamada normal, adiciona na fila de áudio
+      if (!senha.nao_atendido) {
+        filaAudios.current.push(senha);
+        processarFila();
+      }
+    }
+
+    // Atualiza sempre a lista de últimas chamadas (com até 4)
+    setUltimasChamadas((old) => {
+      const atualizadas = old.filter(
+        (c) =>
+          c.paciente !== senha.paciente || c.consultorio !== senha.consultorio
+      );
+      return [senha, ...atualizadas].slice(0, 4);
     });
-    filaAudios.current.push(senha);
-    processarFila();
   };
 
   useEffect(() => {
