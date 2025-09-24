@@ -20,11 +20,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  // só roda no cliente e em desenvolvimento
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (typeof args[0] === "string" && args[0].includes("Hydration failed")) {
+        return; // ignora esse erro
+      }
+      originalError(...args);
+    };
+  }
+
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

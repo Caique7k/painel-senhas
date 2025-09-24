@@ -126,7 +126,11 @@ export default function Painel() {
       return [senha, ...atualizadas].slice(0, 4);
     });
   };
+  const [mounted, setMounted] = useState(false);
 
+  useEffect(() => {
+    setMounted(true); // indica que estamos no cliente
+  }, []);
   useEffect(() => {
     const timer = setInterval(() => setHoraAtual(new Date()), 1000);
     return () => clearInterval(timer);
@@ -195,13 +199,19 @@ export default function Painel() {
           </h1>
         </div>
         <div className="text-right text-white text-2xl">
-          <p>
-            {horaAtual.toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-          <p>{horaAtual.toLocaleDateString("pt-BR")}</p>
+          {mounted ? (
+            <>
+              <p>
+                {horaAtual.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <p>{horaAtual.toLocaleDateString("pt-BR")}</p>
+            </>
+          ) : (
+            <p className="opacity-50">--:--</p> // placeholder até hidratar
+          )}
         </div>
       </header>
 
