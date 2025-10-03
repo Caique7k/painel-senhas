@@ -16,12 +16,8 @@ from fpdf import FPDF
 import locale
 from collections import deque
 
-
-
 app = FastAPI()
 load_dotenv()
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -175,15 +171,67 @@ async def chamar_paciente(
     elif nao_respondido:
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
 
-    # Gera texto do áudio só se não for não atendido
+    # --- Geração do áudio com correção de pronúncia ---
     if not nao_respondido:
-        texto = (
-            f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
-            if chamada_num > 1 else
-            (f"{nome_paciente}, dirigir-se à {consultorio}"
-             if consultorio_normalizado == "triagem"
-             else f"{nome_paciente}, dirigir-se ao {consultorio}")
-        )
+        def corrigir_pronuncia(nome: str) -> str:
+            
+            nome_corrigido = nome
+            nome_lower = nome.lower()
+
+            correcoes = {
+            "laurrainy": "lô-réi-ni",
+            "gandza": "gândza",
+            "bonarelli": "bonarélli",
+            "keven": "qué-ven",
+            "ryan": "rá-ian",
+            "alysson": "álisson",
+            "wellington": "uélington",
+            "yasmim": "ias-mim",
+            "thayná": "tai-ná",
+            "thaynáh": "tai-ná",
+            "rhavy": "rávi",
+            "fernandes": "fer-nan-des",
+            "elloah": "é-lo-a",
+            "loaine": "ló-aine",
+            "mavie": "má-vi",
+            "sciuto": "siúto",
+            "alanita": "alánita",
+            "aysma": "éisma",
+            "raphaela": "ráfaela",
+            "samiry": "sámiri",
+            "eugenia": "é-u-gênia",
+            "thauani": "táuá-ni",
+            "ketlin": "quétlin",
+            "nasry": "násrri",
+            "watfy": "uátfai",
+            "iraquitan": "Íraqui-tan",
+            "marcorio": "mar-cório",
+            "ayna": "áina",
+            "bryan": "brái-an",
+            "simoes": "si-mões",
+            }
+
+            for original, fonetico in correcoes.items():
+                if original in nome_lower:
+                    idx = nome_lower.index(original)
+                    nome_corrigido = nome_corrigido[:idx] + fonetico + nome_corrigido[idx + len(original):]
+                    # atualiza nome_lower para substituir múltiplos nomes na mesma string
+                    nome_lower = nome_corrigido.lower()
+            return nome_corrigido
+
+        # Corrige nome antes de gerar áudio
+        nome_fonetico = corrigir_pronuncia(nome_paciente)
+
+        # Monta frase completa
+        if chamada_num > 1:
+            texto = f"{nome_fonetico}, dirigir-se à {consultorio} (chamada número {chamada_num})"
+        else:
+            if consultorio_normalizado == "triagem":
+                texto = f"{nome_fonetico}, dirigir-se à {consultorio}"
+            else:
+                texto = f"{nome_fonetico}, dirigir-se ao {consultorio}"
+
+        # Gera arquivo de áudio
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_DIR, filename)
         tts = gTTS(text=texto, lang="pt-br")
@@ -191,7 +239,7 @@ async def chamar_paciente(
         asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
         audio_url = f"/static/{filename}"
     else:
-        # Áudio silencioso curto para evitar erro
+        # Áudio silencioso curto
         audio_url = "/static/audio_silencioso.mp3"
 
     # Cria registro da chamada
@@ -206,7 +254,7 @@ async def chamar_paciente(
         "nao_atendido": nao_respondido
     }
 
-        # Atualiza listas em memória
+    # Atualiza listas em memória
     chamadas_recentes[:] = [
         c for c in chamadas_recentes if agora - c["timestamp"] < 180 and c["consultorio"].strip().lower() != consultorio_normalizado
     ]
@@ -251,8 +299,6 @@ async def ultimas_chamadas(setor: str = Query(...)):
         validas.append(chamada)
 
     return validas
-
-
 
 from fastapi import HTTPException
 try:
