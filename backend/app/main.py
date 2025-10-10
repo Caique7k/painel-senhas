@@ -15,6 +15,7 @@ from datetime import datetime
 from fpdf import FPDF
 import locale
 from collections import deque
+import edge_tts
 
 
 
@@ -100,6 +101,15 @@ def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_cham
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
+VOICE = "pt-BR-MacerioMultilingualNeural"  # voz escolhida
+SPEED = 0.9  # velocidade (1.0 = normal)
+
+async def gerar_audio_edge(texto: str) -> str:
+
+    nome_arquivo = os.path.join(AUDIO_DIR, f"{uuid.uuid4()}.mp3")
+    comunicador = edge_tts.Communicate(text=texto, voice=VOICE)
+    await comunicador.save(nome_arquivo)
+    return nome_arquivo
 
 chamadas_recentes = []
 historico_chamadas = []
@@ -175,21 +185,23 @@ async def chamar_paciente(
     elif nao_respondido:
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
 
-    # Gera texto do áudio só se não for não atendido
+    # Gera áudio só se não for não atendido
     if not nao_respondido:
-        texto = (
-            f"{nome_paciente}, dirigir-se à {consultorio} (chamada número {chamada_num})"
-            if chamada_num > 1 else
-            (f"{nome_paciente}, dirigir-se à {consultorio}"
-             if consultorio_normalizado == "triagem"
-             else f"{nome_paciente}, dirigir-se ao {consultorio}")
-        )
-        filename = f"{uuid.uuid4()}.mp3"
-        filepath = os.path.join(AUDIO_DIR, filename)
-        tts = gTTS(text=texto, lang="pt-br")
-        tts.save(filepath)
+        # Determina a preposição correta
+        if consultorio_normalizado == "triagem":
+            preposicao = "à"
+        else:
+            preposicao = "ao"
+
+        # Define o texto completo, incluindo 'chamada número X' se for a segunda ou terceira chamada
+        if chamada_num > 1:
+            texto_chamada = f"{nome_paciente}, dirigir-se {preposicao} {consultorio} (chamada número {chamada_num})"
+        else:
+            texto_chamada = f"{nome_paciente}, dirigir-se {preposicao} {consultorio}"
+
+        filepath = await gerar_audio_edge(texto_chamada)
         asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
-        audio_url = f"/static/{filename}"
+        audio_url = f"/static/{os.path.basename(filepath)}"
     else:
         # Áudio silencioso curto para evitar erro
         audio_url = "/static/audio_silencioso.mp3"
@@ -206,7 +218,7 @@ async def chamar_paciente(
         "nao_atendido": nao_respondido
     }
 
-        # Atualiza listas em memória
+    # Atualiza listas em memória
     chamadas_recentes[:] = [
         c for c in chamadas_recentes if agora - c["timestamp"] < 180 and c["consultorio"].strip().lower() != consultorio_normalizado
     ]
