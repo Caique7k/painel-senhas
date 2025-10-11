@@ -101,8 +101,8 @@ def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_cham
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
-VOICE = "pt-BR-MacerioMultilingualNeural"  # voz escolhida
-SPEED = 0.9  # velocidade (1.0 = normal)
+VOICE = "pt-BR-FranciscaNeural"  # voz escolhida
+SPEED = 0.5  # velocidade (1.0 = normal)
 
 async def gerar_audio_edge(texto: str) -> str:
 
