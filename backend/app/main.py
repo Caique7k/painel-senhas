@@ -102,13 +102,21 @@ def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_cham
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 VOICE = "pt-BR-FranciscaNeural"  # voz escolhida
-SPEED = 0.5  # velocidade (1.0 = normal)
+SPEED = -12  # velocidade (1.0 = normal)
 
 async def gerar_audio_edge(texto: str) -> str:
+    nome_hash = hashlib.md5(texto.encode()).hexdigest()
+    nome_arquivo = os.path.join(AUDIO_DIR, f"{nome_hash}.mp3")
 
-    nome_arquivo = os.path.join(AUDIO_DIR, f"{uuid.uuid4()}.mp3")
-    comunicador = edge_tts.Communicate(text=texto, voice=VOICE)
-    await comunicador.save(nome_arquivo)
+    if not os.path.exists(nome_arquivo):
+        print(f"[DEBUG] Gerando áudio para: {texto}")
+        comunicador = edge_tts.Communicate(
+        text=texto,
+        voice=VOICE,
+        rate=f"{SPEED:+d}%"
+    )
+        await comunicador.save(nome_arquivo)
+
     return nome_arquivo
 
 chamadas_recentes = []
