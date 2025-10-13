@@ -96,7 +96,6 @@ def inserir_paciente_nao_atendido(nome_paciente, setor, consultorio, numero_cham
 
 AUDIO_DIR = "app/static"
 os.makedirs(AUDIO_DIR, exist_ok=True)
-
 chamadas_recentes = []
 historico_chamadas = []
 
@@ -137,6 +136,23 @@ async def processar_fila_audios():
         await asyncio.sleep(3)
 
     reproduzindo_audio = False
+    
+async def gerar_audio_lento(texto: str, filepath: str):
+    communicate = edge_tts.Communicate(
+    text=texto,
+    voice="pt-BR-FranciscaNeural",
+    rate="-12%"  # ou outro valor
+    )
+    await communicate.save(filepath)
+    # Garantir que o arquivo existe e não está vazio
+    for _ in range(5):
+        print(f"[DEBUG] Verificando existência do arquivo: {filepath}")
+        if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+            print(f"[DEBUG] Arquivo de áudio gerado com sucesso: {filepath}")
+            return
+        await asyncio.sleep(0.1)
+    raise RuntimeError(f"Erro ao gerar áudio: {filepath} não criado corretamente")
+  
 
 
 @app.post("/chamar")
@@ -146,26 +162,20 @@ async def chamar_paciente(
     setor: str = Form(...)
 ):
     global chamadas_recentes, historico_chamadas
-
     agora = time.time()
     consultorio_normalizado = consultorio.strip().lower()
 
-    # Limpa histórico recente
     historico_chamadas[:] = [
         c for c in historico_chamadas if agora - c["timestamp"] < 180
     ]
 
-    # Conta chamadas anteriores do paciente no consultório
     chamadas_anteriores = [
         c for c in historico_chamadas
         if c["paciente"] == nome_paciente and c["consultorio"].strip().lower() == consultorio_normalizado
     ]
     chamada_num = len(chamadas_anteriores) + 1
-
-    # Define se é não atendido
     nao_respondido = chamada_num > 3
 
-    # Salva no banco
     if chamada_num == 1:
         inserir_paciente(nome_paciente, setor, consultorio_normalizado, chamada_num)
     elif nao_respondido:
@@ -234,15 +244,15 @@ async def chamar_paciente(
         # Gera arquivo de áudio
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_DIR, filename)
-        tts = gTTS(text=texto, lang="pt-br")
-        tts.save(filepath)
+
+        await gerar_audio_lento(texto, filepath)
+
         asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
         audio_url = f"/static/{filename}"
     else:
         # Áudio silencioso curto
         audio_url = "/static/audio_silencioso.mp3"
 
-    # Cria registro da chamada
     chamada = {
         "id": str(uuid.uuid4()),
         "paciente": nome_paciente,
@@ -258,20 +268,12 @@ async def chamar_paciente(
     chamadas_recentes[:] = [
         c for c in chamadas_recentes if agora - c["timestamp"] < 180 and c["consultorio"].strip().lower() != consultorio_normalizado
     ]
-
-    # Só adiciona ao painel se for até 3ª chamada
     if chamada_num <= 3:
         chamadas_recentes.append(chamada)
-
-    # Histórico sempre recebe
     historico_chamadas.append(chamada)
 
     if nao_respondido:
-        return {
-            "error": "Paciente já foi chamado 3 vezes. Chame outro paciente.",
-            "paciente": chamada
-        }
-
+        return {"error": "Paciente já foi chamado 3 vezes. Chame outro paciente", "paciente": chamada}
     return chamada
 
 
@@ -412,6 +414,6 @@ def gerar_relatorio(data: str = Query(..., description="Formato: YYYY-MM-DD")):
 @app.get("/static/{filename}")
 async def servir_audio(filename: str):
     path = os.path.join(AUDIO_DIR, filename)
-    if os.path.isfile(path):
+    if os.path.isfile(path) and os.path.getsize(path) > 0:
         return FileResponse(path, media_type="audio/mpeg")
-    return {"error": "Arquivo não encontrado"}
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado ou inválido")
