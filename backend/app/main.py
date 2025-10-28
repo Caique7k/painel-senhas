@@ -15,9 +15,14 @@ from datetime import datetime
 from fpdf import FPDF
 import locale
 from collections import deque
+import edge_tts
+from edge_tts import Communicate
+
 
 app = FastAPI()
 load_dotenv()
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -111,6 +116,9 @@ async def apagar_audio_apos_3_minutos(path: str):
     else:
         print(f"[DEBUG] Arquivo já não existia: {path}")
 
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(testar_edge_tts())
 
 @app.get("/")
 async def root():
@@ -137,24 +145,74 @@ async def processar_fila_audios():
 
     reproduzindo_audio = False
     
-async def gerar_audio_lento(texto: str, filepath: str):
-    communicate = edge_tts.Communicate(
-    text=texto,
-    voice="pt-BR-FranciscaNeural",
-    rate="-12%"  # ou outro valor
-    )
-    await communicate.save(filepath)
-    # Garantir que o arquivo existe e não está vazio
-    for _ in range(5):
-        print(f"[DEBUG] Verificando existência do arquivo: {filepath}")
-        if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-            print(f"[DEBUG] Arquivo de áudio gerado com sucesso: {filepath}")
-            return
-        await asyncio.sleep(0.1)
-    raise RuntimeError(f"Erro ao gerar áudio: {filepath} não criado corretamente")
+EDGE_TTS_OK = True  # Flag global indicando se edge-tts está disponível
+
+async def gerar_audio(texto: str, filepath: str):
   
+    global EDGE_TTS_OK
 
+    if EDGE_TTS_OK:
+        try:
+            communicate = edge_tts.Communicate(
+                text=texto,
+                voice="pt-BR-FranciscaNeural",
+                rate="-12%"
+            )
+            await communicate.save(filepath)
 
+            # Loop de verificação do arquivo
+            for _ in range(5):
+                print(f"[DEBUG EDGE-TTS] Verificando existência do arquivo: {filepath}")
+                if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                    print(f"[EDGE-TTS] Áudio gerado com sucesso: {filepath}")
+                    return
+                await asyncio.sleep(0.1)
+
+            # Se não criou, considera falha
+            raise RuntimeError(f"[EDGE-TTS] Arquivo não criado corretamente: {filepath}")
+
+        except Exception as e:
+            print(f"[EDGE-TTS] Falha detectada: {e}. Fallback para gTTS.")
+            EDGE_TTS_OK = False  # marca edge-tts como indisponível
+
+    # Fallback para gTTS
+    try:
+        tts = gTTS(texto, lang="pt")
+        tts.save(filepath)
+
+        # Loop de verificação do arquivo
+        for _ in range(5):
+            print(f"[DEBUG gTTS] Verificando existência do arquivo: {filepath}")
+            if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                print(f"[gTTS] Áudio gerado com sucesso: {filepath}")
+                return
+            await asyncio.sleep(0.1)
+
+        raise RuntimeError(f"[gTTS] Arquivo não criado corretamente: {filepath}")
+
+    except Exception as e:
+        raise RuntimeError(f"[gTTS] Falha ao gerar áudio: {e}")
+    
+async def testar_edge_tts():
+    global EDGE_TTS_OK
+    while True:
+        if not EDGE_TTS_OK:
+            teste_path = os.path.join(AUDIO_DIR, "teste_edge.mp3")
+            try:
+                communicate = edge_tts.Communicate(
+                    text="Teste",
+                    voice="pt-BR-FranciscaNeural"
+                )
+                await communicate.save(teste_path)
+                # Verifica arquivo criado
+                if os.path.exists(teste_path) and os.path.getsize(teste_path) > 0:
+                    EDGE_TTS_OK = True
+                    print("[EDGE-TTS] Voltou! Agora é o primário novamente.")
+                    os.remove(teste_path)
+            except:
+                pass
+        await asyncio.sleep(60)
+  
 @app.post("/chamar")
 async def chamar_paciente(
     nome_paciente: str = Form(...),
@@ -170,9 +228,11 @@ async def chamar_paciente(
     ]
 
     chamadas_anteriores = [
-        c for c in historico_chamadas
-        if c["paciente"] == nome_paciente and c["consultorio"].strip().lower() == consultorio_normalizado
-    ]
+    c for c in historico_chamadas
+    if c["paciente"] == nome_paciente
+    and c["consultorio"].strip().lower() == consultorio_normalizado
+    and c["setor"] == setor  
+]
     chamada_num = len(chamadas_anteriores) + 1
     nao_respondido = chamada_num > 3
 
@@ -181,76 +241,20 @@ async def chamar_paciente(
     elif nao_respondido:
         inserir_paciente_nao_atendido(nome_paciente, setor, consultorio_normalizado, chamada_num)
 
-    # --- Geração do áudio com correção de pronúncia ---
     if not nao_respondido:
-        def corrigir_pronuncia(nome: str) -> str:
-            
-            nome_corrigido = nome
-            nome_lower = nome.lower()
-
-            correcoes = {
-            "laurrainy": "lô-réi-ni",
-            "gandza": "gândza",
-            "bonarelli": "bonarélli",
-            "keven": "qué-ven",
-            "ryan": "rá-ian",
-            "alysson": "álisson",
-            "wellington": "uélington",
-            "yasmim": "ias-mim",
-            "thayná": "tai-ná",
-            "thaynáh": "tai-ná",
-            "rhavy": "rávi",
-            "fernandes": "fer-nan-des",
-            "elloah": "é-lo-a",
-            "loaine": "ló-aine",
-            "mavie": "má-vi",
-            "sciuto": "siúto",
-            "alanita": "alánita",
-            "aysma": "éisma",
-            "raphaela": "ráfaela",
-            "samiry": "sámiri",
-            "eugenia": "é-u-gênia",
-            "thauani": "táuá-ni",
-            "ketlin": "quétlin",
-            "nasry": "násrri",
-            "watfy": "uátfai",
-            "iraquitan": "Íraqui-tan",
-            "marcorio": "mar-cório",
-            "ayna": "áina",
-            "bryan": "brái-an",
-            "simoes": "si-mões",
-            }
-
-            for original, fonetico in correcoes.items():
-                if original in nome_lower:
-                    idx = nome_lower.index(original)
-                    nome_corrigido = nome_corrigido[:idx] + fonetico + nome_corrigido[idx + len(original):]
-                    # atualiza nome_lower para substituir múltiplos nomes na mesma string
-                    nome_lower = nome_corrigido.lower()
-            return nome_corrigido
-
-        # Corrige nome antes de gerar áudio
-        nome_fonetico = corrigir_pronuncia(nome_paciente)
-
-        # Monta frase completa
-        if chamada_num > 1:
-            texto = f"{nome_fonetico}, dirigir-se à {consultorio} (chamada número {chamada_num})"
-        else:
-            if consultorio_normalizado == "triagem":
-                texto = f"{nome_fonetico}, dirigir-se à {consultorio}"
-            else:
-                texto = f"{nome_fonetico}, dirigir-se ao {consultorio}"
-
-        # Gera arquivo de áudio
+        texto = (
+            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação'] else 'ao'} {consultorio} (chamada número {chamada_num})"
+            if chamada_num > 1 else
+            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação'] else 'ao'} {consultorio}"
+        )
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_DIR, filename)
 
-        await gerar_audio_lento(texto, filepath)
+        await gerar_audio(texto, filepath)
 
         asyncio.create_task(apagar_audio_apos_3_minutos(filepath))
         audio_url = f"/static/{filename}"
     else:
-        # Áudio silencioso curto
         audio_url = "/static/audio_silencioso.mp3"
 
     chamada = {
@@ -264,7 +268,6 @@ async def chamar_paciente(
         "nao_atendido": nao_respondido
     }
 
-    # Atualiza listas em memória
     chamadas_recentes[:] = [
         c for c in chamadas_recentes if agora - c["timestamp"] < 180 and c["consultorio"].strip().lower() != consultorio_normalizado
     ]
@@ -301,6 +304,8 @@ async def ultimas_chamadas(setor: str = Query(...)):
         validas.append(chamada)
 
     return validas
+
+
 
 from fastapi import HTTPException
 try:
