@@ -49,7 +49,7 @@ export default function Home() {
     type: "error" | "success";
   } | null>(null);
 
-  const consultorios = ["Consultório 1"];
+  const consultorios = ["Consultório 2"];
   const [mostrarModal, setMostrarModal] = useState(false);
   const [dataRelatorio, setDataRelatorio] = useState("");
   // Função para truncar texto
