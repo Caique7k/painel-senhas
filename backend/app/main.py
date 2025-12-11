@@ -148,9 +148,9 @@ async def processar_fila_audios():
 EDGE_TTS_OK = True  # Flag global indicando se edge-tts está disponível
 
 async def gerar_audio(texto: str, filepath: str):
-  
     global EDGE_TTS_OK
 
+    # 1) Tenta EDGE TTS primeiro
     if EDGE_TTS_OK:
         try:
             communicate = edge_tts.Communicate(
@@ -160,35 +160,26 @@ async def gerar_audio(texto: str, filepath: str):
             )
             await communicate.save(filepath)
 
-            # Loop de verificação do arquivo
-            for _ in range(5):
-                print(f"[DEBUG EDGE-TTS] Verificando existência do arquivo: {filepath}")
-                if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-                    print(f"[EDGE-TTS] Áudio gerado com sucesso: {filepath}")
-                    return
-                await asyncio.sleep(0.1)
+            if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                raise RuntimeError(f"[EDGE-TTS] Arquivo vazio ou inexistente: {filepath}")
 
-            # Se não criou, considera falha
-            raise RuntimeError(f"[EDGE-TTS] Arquivo não criado corretamente: {filepath}")
+            print(f"[EDGE-TTS] Áudio gerado com sucesso: {filepath}")
+            return
 
         except Exception as e:
             print(f"[EDGE-TTS] Falha detectada: {e}. Fallback para gTTS.")
             EDGE_TTS_OK = False  # marca edge-tts como indisponível
 
-    # Fallback para gTTS
+    # 2) Fallback gTTS
     try:
         tts = gTTS(texto, lang="pt")
         tts.save(filepath)
 
-        # Loop de verificação do arquivo
-        for _ in range(5):
-            print(f"[DEBUG gTTS] Verificando existência do arquivo: {filepath}")
-            if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-                print(f"[gTTS] Áudio gerado com sucesso: {filepath}")
-                return
-            await asyncio.sleep(0.1)
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            raise RuntimeError(f"[gTTS] Arquivo vazio ou inexistente: {filepath}")
 
-        raise RuntimeError(f"[gTTS] Arquivo não criado corretamente: {filepath}")
+        print(f"[gTTS] Áudio gerado com sucesso: {filepath}")
+        return
 
     except Exception as e:
         raise RuntimeError(f"[gTTS] Falha ao gerar áudio: {e}")

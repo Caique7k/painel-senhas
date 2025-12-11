@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaUser, FaClinicMedical } from "react-icons/fa";
 
 type ToastProps = {
@@ -48,16 +48,36 @@ export default function Home() {
     message: string;
     type: "error" | "success";
   } | null>(null);
+  const [isCooldown, setIsCooldown] = useState(false);
+  const [cooldownRestante, setCooldownRestante] = useState(0);
+  const cooldownRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
 
   const consultorios = ["Consultório 3"];
   const [mostrarModal, setMostrarModal] = useState(false);
   const [dataRelatorio, setDataRelatorio] = useState("");
-  // Função para truncar texto
-  function truncate(text: string, maxLength: number) {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength) + "...";
-  }
 
+  const iniciarCooldown = () => {
+    setIsCooldown(true);
+    setCooldownRestante(5);
+
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+
+    cooldownRef.current = setInterval(() => {
+      setCooldownRestante((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          setIsCooldown(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
   const [erroRelatorio, setErroRelatorio] = useState("");
 
   const gerarRelatorio = async (tipo: "atendidos" | "nao-atendidos") => {
@@ -85,14 +105,23 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (isCooldown) {
+      setToast({
+        message: `Aguarde ${cooldownRestante}s para chamar novamente.`,
+        type: "error",
+      });
+      return;
+    }
     if (!nomePaciente || !consultorio) {
       setToast({
         message: "Por favor, preencha todos os campos.",
         type: "error",
       });
+      iniciarCooldown();
       return;
     }
+
+    iniciarCooldown();
 
     try {
       const formData = new FormData();
@@ -113,15 +142,17 @@ export default function Home() {
       }
 
       const data = await response.json();
+
       if (data.error) {
         setToast({
           message: data.error,
           type: "error",
         });
+
         return;
-      } else {
-        setToast({ message: "Enviado com sucesso!", type: "success" });
       }
+
+      setToast({ message: "Enviado com sucesso!", type: "success" });
     } catch (error) {
       setToast({
         message: (error as Error).message || "Erro desconhecido",
@@ -188,9 +219,14 @@ export default function Home() {
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-700 py-3 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-400"
+            disabled={isCooldown}
+            className={`w-full rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-700 py-3 text-white font-semibold shadow-lg hover:scale-105 hover:shadow-xl transition cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-400 ${
+              isCooldown ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
-            Chamar paciente
+            {isCooldown
+              ? `Aguarde... (${cooldownRestante}s)`
+              : " Chamar paciente"}
           </button>
           <button
             type="button"

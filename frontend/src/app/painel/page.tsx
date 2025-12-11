@@ -10,6 +10,7 @@ type Senha = {
   numero_chamada?: number;
   nao_atendido?: boolean;
 };
+
 const Snowfall = () => {
   const flakes = Array.from({ length: 25 }); // quantidade de flocos
 
@@ -49,8 +50,7 @@ const Snowfall = () => {
           }
         }
 
-        /* Distribui os flocos horizontalmente e varia duração/atraso
-           pra ficar natural e bem suave */
+        /* ... seus nth-child dos flocos aqui, mantive igual ... */
         .snowflake:nth-child(1) {
           left: 5%;
           animation-duration: 14s;
@@ -227,6 +227,48 @@ export default function Painel() {
     oscillator.stop(ctx.currentTime + 1);
   };
 
+  // 🔊 Helper: tenta tocar o áudio várias vezes, com pequeno delay
+  const tocarAudioComRetry = (
+    url: string,
+    tentativas: number = 5,
+    delayMs: number = 800
+  ): Promise<void> => {
+    return new Promise((resolve) => {
+      const tentar = (restantes: number) => {
+        const cacheBuster = `t=${Date.now()}`;
+        const sep = url.includes("?") ? "&" : "?";
+        const finalUrl = `${url}${sep}${cacheBuster}`;
+
+        const audio = new Audio(finalUrl);
+
+        audio.onended = () => {
+          resolve();
+        };
+
+        audio.onerror = () => {
+          console.warn("Falha ao carregar áudio, restantes:", restantes - 1);
+          if (restantes > 1) {
+            setTimeout(() => tentar(restantes - 1), delayMs);
+          } else {
+            console.error("Erro ao carregar áudio após várias tentativas.");
+            resolve(); // desiste e segue a fila
+          }
+        };
+
+        audio.play().catch((err) => {
+          console.error("Erro ao reproduzir áudio:", err);
+          if (restantes > 1) {
+            setTimeout(() => tentar(restantes - 1), delayMs);
+          } else {
+            resolve();
+          }
+        });
+      };
+
+      tentar(tentativas);
+    });
+  };
+
   const processarFila = () => {
     if (tocando.current || filaAudios.current.length === 0) return;
     tocando.current = true;
@@ -249,23 +291,25 @@ export default function Painel() {
     tocarBeep();
 
     setTimeout(() => {
-      const audio = new Audio(
-        `${process.env.NEXT_PUBLIC_API_URL}${chamada.audio_url}`
-      );
-      audio.onerror = () => console.error("Erro ao carregar áudio!");
-      audio.play();
+      const url = `${process.env.NEXT_PUBLIC_API_URL}${chamada.audio_url}`;
 
-      audio.onended = () => {
-        tocando.current = false;
-        processarFila();
-      };
+      tocarAudioComRetry(url)
+        .then(() => {
+          // terminou (com sucesso ou desistiu), segue
+        })
+        .finally(() => {
+          tocando.current = false;
+          processarFila();
+        });
     }, 1000);
   };
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true); // indica que estamos no cliente
   }, []);
+
   const adicionarNaFila = (senha: Senha) => {
     const agora = Date.now();
 
@@ -384,7 +428,7 @@ export default function Painel() {
               <p>{horaAtual.toLocaleDateString("pt-BR")}</p>
             </>
           ) : (
-            <p className="opacity-50">--:--</p> // placeholder até hidratar
+            <p className="opacity-50">--:--</p>
           )}
         </div>
       </header>
