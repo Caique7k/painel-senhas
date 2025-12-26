@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 type Senha = {
   id: string;
@@ -11,182 +11,13 @@ type Senha = {
   nao_atendido?: boolean;
 };
 
-const Snowfall = () => {
-  const flakes = Array.from({ length: 25 }); // quantidade de flocos
-
-  return (
-    <>
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        {flakes.map((_, i) => (
-          <span key={i} className="snowflake">
-            ❄
-          </span>
-        ))}
-      </div>
-
-      <style jsx global>{`
-        .snowflake {
-          position: absolute;
-          top: -10%;
-          font-size: 18px;
-          color: rgba(255, 255, 255, 0.45);
-          text-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
-          animation-name: snowfall;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
-        }
-
-        @keyframes snowfall {
-          0% {
-            transform: translate3d(0, 0, 0);
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          100% {
-            transform: translate3d(0, 110vh, 0);
-            opacity: 0;
-          }
-        }
-
-        /* ... seus nth-child dos flocos aqui, mantive igual ... */
-        .snowflake:nth-child(1) {
-          left: 5%;
-          animation-duration: 14s;
-          animation-delay: -2s;
-        }
-        .snowflake:nth-child(2) {
-          left: 12%;
-          animation-duration: 18s;
-          animation-delay: -5s;
-        }
-        .snowflake:nth-child(3) {
-          left: 20%;
-          animation-duration: 16s;
-          animation-delay: -8s;
-        }
-        .snowflake:nth-child(4) {
-          left: 28%;
-          animation-duration: 20s;
-          animation-delay: -3s;
-        }
-        .snowflake:nth-child(5) {
-          left: 35%;
-          animation-duration: 17s;
-          animation-delay: -10s;
-        }
-        .snowflake:nth-child(6) {
-          left: 42%;
-          animation-duration: 19s;
-          animation-delay: -6s;
-        }
-        .snowflake:nth-child(7) {
-          left: 50%;
-          animation-duration: 22s;
-          animation-delay: -12s;
-        }
-        .snowflake:nth-child(8) {
-          left: 58%;
-          animation-duration: 15s;
-          animation-delay: -4s;
-        }
-        .snowflake:nth-child(9) {
-          left: 65%;
-          animation-duration: 19s;
-          animation-delay: -9s;
-        }
-        .snowflake:nth-child(10) {
-          left: 72%;
-          animation-duration: 21s;
-          animation-delay: -1s;
-        }
-        .snowflake:nth-child(11) {
-          left: 79%;
-          animation-duration: 18s;
-          animation-delay: -7s;
-        }
-        .snowflake:nth-child(12) {
-          left: 86%;
-          animation-duration: 23s;
-          animation-delay: -11s;
-        }
-        .snowflake:nth-child(13) {
-          left: 93%;
-          animation-duration: 17s;
-          animation-delay: -13s;
-        }
-        .snowflake:nth-child(14) {
-          left: 2%;
-          animation-duration: 20s;
-          animation-delay: -15s;
-        }
-        .snowflake:nth-child(15) {
-          left: 18%;
-          animation-duration: 24s;
-          animation-delay: -6s;
-        }
-        .snowflake:nth-child(16) {
-          left: 31%;
-          animation-duration: 19s;
-          animation-delay: -14s;
-        }
-        .snowflake:nth-child(17) {
-          left: 44%;
-          animation-duration: 22s;
-          animation-delay: -9s;
-        }
-        .snowflake:nth-child(18) {
-          left: 57%;
-          animation-duration: 16s;
-          animation-delay: -3s;
-        }
-        .snowflake:nth-child(19) {
-          left: 70%;
-          animation-duration: 21s;
-          animation-delay: -5s;
-        }
-        .snowflake:nth-child(20) {
-          left: 83%;
-          animation-duration: 25s;
-          animation-delay: -16s;
-        }
-        .snowflake:nth-child(21) {
-          left: 10%;
-          animation-duration: 26s;
-          animation-delay: -7s;
-        }
-        .snowflake:nth-child(22) {
-          left: 38%;
-          animation-duration: 18s;
-          animation-delay: -2s;
-        }
-        .snowflake:nth-child(23) {
-          left: 63%;
-          animation-duration: 24s;
-          animation-delay: -10s;
-        }
-        .snowflake:nth-child(24) {
-          left: 88%;
-          animation-duration: 20s;
-          animation-delay: -4s;
-        }
-        .snowflake:nth-child(25) {
-          left: 50%;
-          animation-duration: 28s;
-          animation-delay: -18s;
-        }
-      `}</style>
-    </>
-  );
-};
-
 export default function Painel() {
   const [senhas, setSenhas] = useState<Senha[]>([]);
   const [ultimasChamadas, setUltimasChamadas] = useState<Senha[]>([]);
   const [chamadaAtual, setChamadaAtual] = useState<Senha | null>(null);
   const [horaAtual, setHoraAtual] = useState(new Date());
   const [audioLiberado, setAudioLiberado] = useState(false);
+  const [fraseAnoNovo, setFraseAnoNovo] = useState("");
 
   const historicoAudios = useRef<
     { paciente: string; consultorio: string; time: number }[]
@@ -394,13 +225,60 @@ export default function Painel() {
     const interval = setInterval(buscarChamadas, 5000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    const container = document.getElementById("newyear-particles");
+    if (!container) return;
 
+    const particles: HTMLDivElement[] = [];
+
+    for (let i = 0; i < 35; i++) {
+      const p = document.createElement("div");
+      p.className = "ny-particle";
+
+      const size = Math.random() * 6 + 4;
+      const duration = Math.random() * 15 + 15;
+
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.left = `${Math.random() * 100}%`;
+      p.style.animationDuration = `${duration}s`;
+      p.style.animationDelay = `${Math.random() * 10}s`;
+
+      container.appendChild(p);
+      particles.push(p);
+    }
+
+    return () => {
+      particles.forEach((p) => p.remove());
+    };
+  }, []);
+  const frasesAnoNovo = useMemo(
+    () => [
+      "A Santa Casa de Misericórdia de Guaíra deseja a todos um novo ano de saúde, cuidado e esperança.",
+      "Iniciamos um novo ano renovando nosso compromisso com a saúde e a vida.",
+      "Desejamos a todos um Ano Novo com saúde, paz e prosperidade.",
+    ],
+    []
+  );
+  useEffect(() => {
+    let index = 0;
+
+    // define a primeira frase imediatamente
+    setFraseAnoNovo(frasesAnoNovo[index]);
+
+    const interval = setInterval(() => {
+      index = (index + 1) % frasesAnoNovo.length;
+      setFraseAnoNovo(frasesAnoNovo[index]);
+    }, 10000); // 10 segundos
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <main
       className="relative min-h-screen w-screen flex flex-col overflow-hidden"
       style={{ backgroundColor: "#24235c" }}
     >
-      <Snowfall />
+      <div id="newyear-particles"></div>
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center px-8 py-4 border-b border-white/20">
         <div className="flex items-center gap-4">
@@ -411,7 +289,7 @@ export default function Painel() {
           />
           <div className="flex flex-col">
             <h1 className="text-white text-4xl font-bold">
-              Santa Casa de Misericórdia de Guaíra 🎄
+              Santa Casa de Misericórdia de Guaíra ✨
             </h1>
             <span className="text-white/70 text-lg">Boas Festas!</span>
           </div>
@@ -494,10 +372,8 @@ export default function Painel() {
           ))}
         </ul>
       </div>
-      {/* Rodapé bem clean */}
       <footer className="relative z-10 text-center text-white/60 text-2xl p-4 border-t border-white/20">
-        Santa Casa de Misericórdia de Guaíra deseja a todos um Natal de paz e
-        saúde.
+        {fraseAnoNovo}
       </footer>
     </main>
   );

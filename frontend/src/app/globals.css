@@ -32,3 +32,74 @@ div[data-next-badge="true"] {
   opacity: 0 !important;
   position: absolute !important;
 }
+.confetti-container {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1; /* fica atrás do conteúdo */
+}
+
+.confetti-container::before,
+.confetti-container::after {
+  content: "";
+  position: absolute;
+  inset: -200px;
+  background-image: radial-gradient(
+      circle,
+      rgba(255, 215, 120, 0.35) 2px,
+      transparent 3px
+    ),
+    radial-gradient(circle, rgba(255, 215, 120, 0.25) 1.5px, transparent 3px),
+    radial-gradient(circle, rgba(255, 215, 120, 0.2) 1px, transparent 3px);
+  background-size: 120px 120px;
+  animation: confetti-fall 25s linear infinite;
+}
+
+.confetti-container::after {
+  animation-duration: 35s;
+  opacity: 0.6;
+}
+
+@keyframes confetti-fall {
+  from {
+    transform: translateY(-200px);
+  }
+  to {
+    transform: translateY(120vh);
+  }
+}
+#newyear-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ny-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffd700, #ffb700);
+  border-radius: 50%;
+  opacity: 0;
+  top: 110vh; /* começa FORA da tela */
+  animation: ny-float linear infinite;
+  filter: blur(0.2px);
+  animation-fill-mode: forwards;
+}
+
+@keyframes ny-float {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-130vh) scale(1);
+    opacity: 0;
+  }
+}
