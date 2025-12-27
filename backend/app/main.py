@@ -18,7 +18,7 @@ from collections import deque
 import edge_tts
 from edge_tts import Communicate
 
-
+pedro = 0
 app = FastAPI()
 load_dotenv()
 
