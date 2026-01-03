@@ -225,60 +225,12 @@ export default function Painel() {
     const interval = setInterval(buscarChamadas, 5000);
     return () => clearInterval(interval);
   }, []);
-  useEffect(() => {
-    const container = document.getElementById("newyear-particles");
-    if (!container) return;
 
-    const particles: HTMLDivElement[] = [];
-
-    for (let i = 0; i < 35; i++) {
-      const p = document.createElement("div");
-      p.className = "ny-particle";
-
-      const size = Math.random() * 6 + 4;
-      const duration = Math.random() * 15 + 15;
-
-      p.style.width = `${size}px`;
-      p.style.height = `${size}px`;
-      p.style.left = `${Math.random() * 100}%`;
-      p.style.animationDuration = `${duration}s`;
-      p.style.animationDelay = `${Math.random() * 10}s`;
-
-      container.appendChild(p);
-      particles.push(p);
-    }
-
-    return () => {
-      particles.forEach((p) => p.remove());
-    };
-  }, []);
-  const frasesAnoNovo = useMemo(
-    () => [
-      "A Santa Casa de Misericórdia de Guaíra deseja a todos um novo ano de saúde, cuidado e esperança.",
-      "Iniciamos um novo ano renovando nosso compromisso com a saúde e a vida.",
-      "Desejamos a todos um Ano Novo com saúde, paz e prosperidade.",
-    ],
-    []
-  );
-  useEffect(() => {
-    let index = 0;
-
-    // define a primeira frase imediatamente
-    setFraseAnoNovo(frasesAnoNovo[index]);
-
-    const interval = setInterval(() => {
-      index = (index + 1) % frasesAnoNovo.length;
-      setFraseAnoNovo(frasesAnoNovo[index]);
-    }, 10000); // 10 segundos
-
-    return () => clearInterval(interval);
-  }, []);
   return (
     <main
       className="relative min-h-screen w-screen flex flex-col overflow-hidden"
       style={{ backgroundColor: "#24235c" }}
     >
-      <div id="newyear-particles"></div>
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center px-8 py-4 border-b border-white/20">
         <div className="flex items-center gap-4">
@@ -289,9 +241,8 @@ export default function Painel() {
           />
           <div className="flex flex-col">
             <h1 className="text-white text-4xl font-bold">
-              Santa Casa de Misericórdia de Guaíra ✨
+              Santa Casa de Misericórdia de Guaíra
             </h1>
-            <span className="text-white/70 text-lg">Boas Festas!</span>
           </div>
         </div>
         <div className="text-right text-white text-2xl">
@@ -372,9 +323,6 @@ export default function Painel() {
           ))}
         </ul>
       </div>
-      <footer className="relative z-10 text-center text-white/60 text-2xl p-4 border-t border-white/20">
-        {fraseAnoNovo}
-      </footer>
     </main>
   );
 }
