@@ -5,4 +5,4 @@ python-multipart
 fpdf
 python-dotenv
 mysql-connector-python
-edge-tts==7.2.1
+edge-tts
