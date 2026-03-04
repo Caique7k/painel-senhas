@@ -234,9 +234,9 @@ async def chamar_paciente(
 
     if not nao_respondido:
         texto = (
-            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação'] else 'ao'} {consultorio} (chamada número {chamada_num})"
+            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação', 'tomografia, sala 08', 'densiometria, sala 09'] else 'ao'} {consultorio} (chamada número {chamada_num})"
             if chamada_num > 1 else
-            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação'] else 'ao'} {consultorio}"
+            f"{nome_paciente}, dirigir-se {'à' if consultorio_normalizado in ['triagem', 'sala de medicação', 'tomografia, sala 08', 'densiometria, sala 09'] else 'ao'} {consultorio}"
         )
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join(AUDIO_DIR, filename)
@@ -326,7 +326,7 @@ class PDFRelatorio(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
-        self.cell(0, 10, "Santa Casa de Guaíra - Sistema de Chamadas © 2025", 0, 0, "C")
+        self.cell(0, 10, "Santa Casa de Guaíra - Sistema de Chamadas © 2026", 0, 0, "C")
 
 @app.get("/relatorio-atendidos")
 def gerar_relatorio_atendidos(data: str = Query(...)):
