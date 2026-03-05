@@ -62,7 +62,7 @@ export default function Painel() {
   const tocarAudioComRetry = (
     url: string,
     tentativas: number = 5,
-    delayMs: number = 800
+    delayMs: number = 800,
   ): Promise<void> => {
     return new Promise((resolve) => {
       const tentar = (restantes: number) => {
@@ -146,11 +146,11 @@ export default function Painel() {
 
     // Atualiza o histórico de áudio para evitar repetição
     historicoAudios.current = historicoAudios.current.filter(
-      (h) => agora - h.time < 3000
+      (h) => agora - h.time < 3000,
     );
     const repetido = historicoAudios.current.some(
       (h) =>
-        h.paciente === senha.paciente && h.consultorio === senha.consultorio
+        h.paciente === senha.paciente && h.consultorio === senha.consultorio,
     );
     if (!repetido) {
       historicoAudios.current.push({
@@ -170,7 +170,7 @@ export default function Painel() {
     setUltimasChamadas((old) => {
       const atualizadas = old.filter(
         (c) =>
-          c.paciente !== senha.paciente || c.consultorio !== senha.consultorio
+          c.paciente !== senha.paciente || c.consultorio !== senha.consultorio,
       );
       return [senha, ...atualizadas].slice(0, 4);
     });
@@ -180,12 +180,15 @@ export default function Painel() {
     const timer = setInterval(() => setHoraAtual(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+  const buscando = useRef(false);
 
   useEffect(() => {
     const buscarChamadas = async () => {
+      if (buscando.current) return;
+      buscando.current = true;
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/ultimas-chamadas?setor=pa`
+          `${process.env.NEXT_PUBLIC_API_URL}/ultimas-chamadas?setor=pa`,
         );
         const data: Senha[] = await res.json();
 
@@ -202,7 +205,7 @@ export default function Painel() {
               const normalizado = chamada.consultorio.trim().toLowerCase();
               return [
                 ...acc.filter(
-                  (c) => c.consultorio.trim().toLowerCase() !== normalizado
+                  (c) => c.consultorio.trim().toLowerCase() !== normalizado,
                 ),
                 chamada,
               ];
@@ -210,7 +213,7 @@ export default function Painel() {
 
           const idsAntigos = new Set(prev.map((s) => s.id));
           const novasChamadas = atualizadas.filter(
-            (s) => !idsAntigos.has(s.id)
+            (s) => !idsAntigos.has(s.id),
           );
           novasChamadas.forEach((s) => adicionarNaFila(s));
 
@@ -218,6 +221,8 @@ export default function Painel() {
         });
       } catch (error) {
         console.error("Erro ao buscar chamadas:", error);
+      } finally {
+        buscando.current = false;
       }
     };
 
